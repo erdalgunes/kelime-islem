@@ -34,14 +34,4 @@ kotlin {
 
 android {
     namespace = "com.erdalgunes.kelimeislem.composeapp"
-    compileSdk = libs.versions.androidCompileSdk.get().toInt()
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    
-    defaultConfig {
-        minSdk = libs.versions.androidMinSdk.get().toInt()
-    }
 }
