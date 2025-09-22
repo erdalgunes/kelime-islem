@@ -23,20 +23,26 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
 /**
- * Configure Kotlin Multiplatform for shared modules (Android-only focus)
+ * Configure Kotlin Multiplatform for shared modules (Android + JS targets)
  */
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
 internal fun Project.configureKotlinMultiplatform(
     extension: KotlinMultiplatformExtension
 ) = extension.apply {
     
-    // Android target only
+    // Android target
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
         // Enable instrumented tests
         instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+    }
+    
+    // JavaScript target for web
+    js(IR) {
+        binaries.executable()
+        browser()
     }
     
     // Configure common compiler options
@@ -69,6 +75,12 @@ internal fun Project.configureKotlinMultiplatform(
         androidMain {
             dependencies {
                 implementation(libs.findLibrary("kotlinx.coroutines.android").get())
+            }
+        }
+        
+        getByName("jsMain") {
+            dependencies {
+                implementation(libs.findLibrary("kotlinx.coroutines.core").get())
             }
         }
     }

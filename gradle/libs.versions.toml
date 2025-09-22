@@ -1,6 +1,6 @@
 [versions]
 # Core Kotlin and KMP
-kotlin = "2.1.10"
+kotlin = "2.2.20"
 kotlinxCoroutines = "1.10.1"
 kotlinxSerialization = "1.8.0"
 kotlinxDatetime = "0.6.1"
@@ -45,7 +45,7 @@ coil = "2.7.0"
 
 # Testing - JUnit & Kotlin
 junit = "4.13.2"
-kotlin-test = "2.1.10"
+kotlin-test = "2.2.20"
 testRunner = "1.7.0"
 
 
