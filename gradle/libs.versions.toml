@@ -1,0 +1,174 @@
+[versions]
+# Core Kotlin and KMP
+kotlin = "2.1.10"
+kotlinxCoroutines = "1.10.1"
+kotlinxSerialization = "1.8.0"
+kotlinxDatetime = "0.6.1"
+
+# Testing
+kotest = "5.9.1"
+mockk = "1.13.12"
+turbine = "1.2.0"
+kover = "0.8.3"
+robolectric = "4.13"
+androidxTest = "1.6.1"
+androidxTestExt = "1.2.1"
+espresso = "3.6.1"
+
+# Android
+androidGradlePlugin = "8.12.2"
+androidTools = "31.12.2"
+androidMinSdk = "24"
+androidCompileSdk = "35"
+androidTargetSdk = "35"
+
+# Compose Multiplatform
+compose = "1.8.0"
+composeBom = "2025.08.01"
+composeActivity = "1.9.3"
+composeNavigation = "2.8.5"
+composeLifecycle = "2.8.7"
+
+# Networking & Serialization
+ktor = "3.0.2"
+okhttp = "4.12.0"
+
+# Database
+room = "2.7.2"
+sqldelight = "2.0.2"
+
+# Dependency Injection
+koin = "4.1.0"
+
+# Image Loading
+coil = "2.7.0"
+
+# Testing - JUnit & Kotlin
+junit = "4.13.2"
+kotlin-test = "2.1.10"
+testRunner = "1.7.0"
+
+
+# Build & Development
+ksp = "2.1.10-1.0.31"
+detekt = "1.23.7"
+
+[libraries]
+# Kotlin stdlib
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin-test" }
+
+# Kotlinx libraries
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
+
+# Compose
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
+compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-ui = { group = "androidx.compose.ui", name = "ui" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-ui-test = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+
+# Android Compose
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "composeActivity" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "composeNavigation" }
+androidx-lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "composeLifecycle" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "composeLifecycle" }
+
+# Networking
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { group = "io.ktor", name = "ktor-client-darwin", version.ref = "ktor" }
+ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+
+# Database
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+sqldelight-driver-android = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
+sqldelight-driver-native = { group = "app.cash.sqldelight", name = "native-driver", version.ref = "sqldelight" }
+
+# DI
+koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
+koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
+koin-compose = { group = "io.insert-koin", name = "koin-compose", version.ref = "koin" }
+
+# Image Loading
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+
+# Testing - Kotest
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5-jvm", version.ref = "kotest" }
+kotest-framework-datatest = { module = "io.kotest:kotest-framework-datatest", version.ref = "kotest" }
+
+# Testing - Mocking & Utilities
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockk" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+
+# Testing - JUnit & Basic
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+# Testing - Android
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTest" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTest" }
+androidx-test-rules = { module = "androidx.test:rules", version.ref = "androidxTest" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExt" }
+espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
+
+# Dependencies of the included build-logic
+android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "androidGradlePlugin" }
+android-tools-common = { group = "com.android.tools", name = "common", version.ref = "androidTools" }
+compose-gradlePlugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
+kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
+ksp-gradlePlugin = { group = "com.google.devtools.ksp", name = "com.google.devtools.ksp.gradle.plugin", version.ref = "ksp" }
+
+[bundles]
+ktor-common = ["ktor-client-core", "ktor-client-content-negotiation", "ktor-serialization-kotlinx-json"]
+compose-common = ["compose-runtime", "compose-foundation", "compose-material3", "compose-ui"]
+koin-common = ["koin-core", "koin-compose"]
+kotest-common = ["kotest-assertions-core", "kotest-property"]
+kotest-jvm = ["kotest-runner-junit5", "mockk"]
+android-test = ["androidx-test-core", "androidx-test-runner", "androidx-test-rules", "androidx-test-ext-junit"]
+
+[plugins]
+# Kotlin
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+# Android
+android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+android-library = { id = "com.android.library", version.ref = "androidGradlePlugin" }
+
+# Compose
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose" }
+
+# Database
+room = { id = "androidx.room", version.ref = "room" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+
+# Development
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+
+# Testing
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+
+# Project convention plugins
+kelimeislem-kmp-library = { id = "kelimeislem.kmp.library" }
+kelimeislem-kmp-feature = { id = "kelimeislem.kmp.feature" }
+kelimeislem-kmp-application = { id = "kelimeislem.kmp.application" }
+kelimeislem-compose-multiplatform = { id = "kelimeislem.compose.multiplatform" }
+kelimeislem-android-application = { id = "kelimeislem.android.application" }
+kelimeislem-android-application-compose = { id = "kelimeislem.android.application.compose" }
+kelimeislem-android-library = { id = "kelimeislem.android.library" }

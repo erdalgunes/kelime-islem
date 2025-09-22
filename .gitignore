@@ -1,0 +1,77 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Android Studio
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin
+*.kotlin_module
+
+# MacOS
+.DS_Store
+
+# Android
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Logs
+*.log
+
+# Signing
+*.jks
+*.keystore
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Kover reports (keep XML for CI, ignore HTML)
+**/build/reports/kover/html/
+# Keep the XML report for CI/CD
+!**/build/reports/kover/report.xml
+
+# Test results
+**/build/test-results/
+**/build/reports/tests/
+
+# Detekt
+**/build/reports/detekt/
+
+# Paparazzi snapshots (if you want to track them, remove this line)
+**/src/test/snapshots/
+
+# Node (if using any JS tooling)
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+
+# Secrets
+secrets.properties
+apikeys.properties
