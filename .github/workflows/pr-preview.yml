@@ -1,0 +1,215 @@
+name: PR Preview & APK Distribution
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop]
+
+jobs:
+  build-and-distribute:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-home-cache-cleanup: true
+          cache-read-only: false
+          
+      - name: Enable Gradle caching
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.caching=true" >> ~/.gradle/gradle.properties
+          echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
+          echo "org.gradle.configureondemand=true" >> ~/.gradle/gradle.properties
+          echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+          
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+            
+      - name: Detect changed modules
+        id: changes
+        run: |
+          # Get changed files between PR and main
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Determine affected modules
+          AFFECTED_MODULES=""
+          if echo "$CHANGED_FILES" | grep -q "^app/"; then
+            AFFECTED_MODULES="$AFFECTED_MODULES :app"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^core/"; then
+            AFFECTED_MODULES="$AFFECTED_MODULES :core:ui :core:domain :core:data"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^shared/"; then
+            AFFECTED_MODULES="$AFFECTED_MODULES :shared"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^feature/"; then
+            AFFECTED_MODULES="$AFFECTED_MODULES :feature:game"
+          fi
+          
+          # If no specific modules affected, test all
+          if [ -z "$AFFECTED_MODULES" ]; then
+            AFFECTED_MODULES=":app :core:ui :core:domain :core:data :shared"
+          fi
+          
+          echo "affected_modules=$AFFECTED_MODULES" >> $GITHUB_OUTPUT
+          echo "Affected modules: $AFFECTED_MODULES"
+          
+      - name: Run tests for affected modules
+        run: |
+          echo "Running tests for: ${{ steps.changes.outputs.affected_modules }}"
+          ./gradlew ${{ steps.changes.outputs.affected_modules }}:test --continue
+          
+      - name: Run Detekt
+        run: ./gradlew detekt
+        
+      - name: Generate coverage report
+        run: ./gradlew koverHtmlReport
+        
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+        
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: pr-${{ github.event.number }}-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+          
+      - name: Get APK info
+        id: apk-info
+        run: |
+          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          APK_SIZE=$(stat -f%z "$APK_PATH" 2>/dev/null || stat -c%s "$APK_PATH")
+          APK_SIZE_MB=$((APK_SIZE / 1024 / 1024))
+          
+          # Get version info from APK
+          VERSION_NAME=$(./gradlew -q :app:printVersionName | tail -1)
+          VERSION_CODE=$(./gradlew -q :app:printVersionCode | tail -1)
+          
+          echo "apk_size_mb=$APK_SIZE_MB" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          
+      # Optional: Firebase App Distribution (uncomment and configure if you have Firebase setup)
+      # - name: Distribute to Firebase App Distribution
+      #   uses: wzieba/Firebase-Distribution-Github-Action@v1
+      #   with:
+      #     appId: ${{ secrets.FIREBASE_APP_ID }}
+      #     serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+      #     groups: testers
+      #     file: app/build/outputs/apk/debug/app-debug.apk
+      #     releaseNotes: |
+      #       PR #${{ github.event.number }}: ${{ github.event.pull_request.title }}
+      #       
+      #       Changes in this build:
+      #       ${{ github.event.pull_request.body }}
+          
+      - name: Comment PR with APK info
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            // Find existing preview comment
+            const botComment = comments.find(comment => 
+              comment.user.login === 'github-actions[bot]' && 
+              comment.body.includes('📱 PR Preview')
+            );
+            
+            const downloadUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const commentBody = `## 📱 PR Preview Build Ready
+            
+            **APK Information:**
+            - 📦 **Version:** ${{ steps.apk-info.outputs.version_name }} (build ${{ steps.apk-info.outputs.version_code }})
+            - 📏 **Size:** ${{ steps.apk-info.outputs.apk_size_mb }} MB
+            - 🔗 **Download:** [APK Artifact](${downloadUrl})
+            - ⏰ **Built:** ${new Date().toISOString()}
+            
+            **Affected Modules:** ${{ steps.changes.outputs.affected_modules }}
+            
+            **Testing Instructions:**
+            1. Download the APK from the artifact link above
+            2. Install on your Android device (enable "Install unknown apps" if needed)
+            3. Test the changes related to this PR
+            4. Report any issues in the PR comments
+            
+            **Quality Checks:**
+            - ✅ Build successful
+            - ✅ Tests passed for affected modules
+            - ✅ Detekt analysis completed
+            - ✅ Coverage report generated
+            
+            ---
+            *This preview will be available for 7 days. The APK is built from commit ${context.sha.substring(0, 7)}.*`;
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+            
+      - name: Report build failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## ❌ PR Preview Build Failed
+              
+              The preview build for this PR failed. Please check the [workflow logs](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details.
+              
+              Common issues:
+              - Build compilation errors
+              - Test failures
+              - Detekt violations
+              - Gradle configuration issues
+              
+              Please fix the issues and push a new commit to retry the build.`
+            });

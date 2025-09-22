@@ -1,0 +1,78 @@
+# Global ownership - require at least one code owner review for all changes
+* @erdalgunes
+
+# Android Application Layer
+/app/ @erdalgunes
+/app/src/main/java/com/erdalgunes/kelimeislem/ui/ @erdalgunes
+/app/src/main/java/com/erdalgunes/kelimeislem/MainActivity.kt @erdalgunes
+
+# Core Modules - Architecture Critical
+/core/ @erdalgunes
+/core/ui/ @erdalgunes
+/core/domain/ @erdalgunes
+/core/data/ @erdalgunes
+
+# Shared Multiplatform Code
+/shared/ @erdalgunes
+
+# Feature Modules
+/feature/ @erdalgunes
+
+# Build and Configuration - Build System Expertise Required
+/build-logic/ @erdalgunes
+/gradle/ @erdalgunes
+gradle.properties @erdalgunes
+settings.gradle.kts @erdalgunes
+build.gradle.kts @erdalgunes
+/gradle/libs.versions.toml @erdalgunes
+
+# Testing Infrastructure
+/core/testing/ @erdalgunes
+**/test/ @erdalgunes
+**/*Test.kt @erdalgunes
+**/*Tests.kt @erdalgunes
+
+# CI/CD and GitHub Configuration
+/.github/ @erdalgunes
+/.github/workflows/ @erdalgunes
+/.github/ISSUE_TEMPLATE/ @erdalgunes
+
+# Quality and Analysis Configuration
+detekt.yml @erdalgunes
+sonar-project.properties @erdalgunes
+/config/detekt/ @erdalgunes
+
+# Documentation and Project Setup
+README.md @erdalgunes
+CONTRIBUTING.md @erdalgunes
+SECURITY.md @erdalgunes
+CLAUDE.md @erdalgunes
+/docs/ @erdalgunes
+
+# Circuit Architecture Specific Files
+**/*Presenter.kt @erdalgunes
+**/*Screen.kt @erdalgunes
+**/*State.kt @erdalgunes
+**/*Event.kt @erdalgunes
+
+# API and Public Interfaces
+**/api/ @erdalgunes
+**/*Api.kt @erdalgunes
+**/*Repository.kt @erdalgunes
+**/*Service.kt @erdalgunes
+
+# Data Layer Critical Files
+**/database/ @erdalgunes
+**/network/ @erdalgunes
+**/*Entity.kt @erdalgunes
+**/*Dao.kt @erdalgunes
+**/*Database.kt @erdalgunes
+
+# Dependency Injection
+**/*Module.kt @erdalgunes
+**/di/ @erdalgunes
+
+# Kotlin Multiplatform Configuration
+**/commonMain/ @erdalgunes
+**/androidMain/ @erdalgunes
+**/jvmMain/ @erdalgunes
