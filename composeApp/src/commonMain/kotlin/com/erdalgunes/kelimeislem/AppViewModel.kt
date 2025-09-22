@@ -19,6 +19,7 @@ package com.erdalgunes.kelimeislem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import currentTimeMillis
 
 data class AppUiState(
     val greetingMessage: String = "",
@@ -74,5 +75,5 @@ class AppViewModel {
         return contentManager.generateDebugInfo(_uiState.value, config)
     }
     
-    private fun getCurrentTime(): Long = System.currentTimeMillis()
+    private fun getCurrentTime(): Long = currentTimeMillis()
 }

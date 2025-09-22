@@ -18,6 +18,7 @@ package com.erdalgunes.kelimeislem.presentation
 
 import com.erdalgunes.kelimeislem.ContentManager
 import com.erdalgunes.kelimeislem.Greeting
+import currentTimeMillis
 import com.erdalgunes.kelimeislem.getPlatform
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,7 +64,7 @@ class AppPresenter {
         
         _state.value = _state.value.copy(
             greetingMessage = formattedGreeting,
-            lastRefreshTime = System.currentTimeMillis()
+            lastRefreshTime = currentTimeMillis()
         )
     }
     
@@ -72,7 +73,7 @@ class AppPresenter {
      * Returns true if refresh was needed, false otherwise.
      */
     fun refresh(forceRefresh: Boolean = false): Boolean {
-        val currentTime = System.currentTimeMillis()
+        val currentTime = currentTimeMillis()
         val shouldRefresh = forceRefresh || 
             contentManager.shouldRefreshContent(
                 _state.value.lastRefreshTime,
@@ -106,7 +107,7 @@ class AppPresenter {
         val state = _state.value
         val hasGreeting = state.greetingMessage.isNotBlank()
         val hasTitle = contentManager.validateTitle(state.appTitle)
-        val isStale = System.currentTimeMillis() - state.lastRefreshTime > 300_000L // 5 minutes
+        val isStale = currentTimeMillis() - state.lastRefreshTime > 300_000L // 5 minutes
         
         return StateValidation(
             isValid = hasGreeting && hasTitle,
@@ -127,7 +128,7 @@ class AppPresenter {
     fun getAnalytics(): AppAnalytics {
         val state = _state.value
         return AppAnalytics(
-            sessionDuration = System.currentTimeMillis() - state.lastRefreshTime,
+            sessionDuration = currentTimeMillis() - state.lastRefreshTime,
             greetingLength = state.greetingMessage.length,
             titleLength = state.appTitle.length,
             platformName = platform.name,

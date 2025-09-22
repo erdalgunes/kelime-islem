@@ -42,7 +42,17 @@ internal fun Project.configureKotlinMultiplatform(
     // JavaScript target for web
     js(IR) {
         binaries.executable()
-        browser()
+        browser {
+            runTask {
+                devServerProperty.set(
+                    org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.DevServer(
+                        open = true,
+                        port = 8080
+                    )
+                )
+            }
+        }
+        nodejs()
     }
     
     // Configure common compiler options
