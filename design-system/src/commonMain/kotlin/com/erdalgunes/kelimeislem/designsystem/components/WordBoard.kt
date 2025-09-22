@@ -53,7 +53,7 @@ import com.erdalgunes.kelimeislem.designsystem.theme.GameTypography
 import com.erdalgunes.kelimeislem.designsystem.theme.PreviewThemes
 import com.erdalgunes.kelimeislem.designsystem.theme.TurkishGameShowThemeExtensions.gameShowColors
 import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
-import com.erdalgunes.kelimeislem.designsystem.tokens.Easing
+import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowEasing
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowElevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowSpacing
 import java.util.Locale
@@ -66,7 +66,7 @@ import java.util.Locale
 fun WordBoard(
     word: String,
     modifier: Modifier = Modifier,
-    style: WordBoardStyle = WordBoardStyle.Standard,
+    style: WordBoardStyle = WordBoardStyle(),
     state: WordBoardState = WordBoardState.Normal,
     showLetters: Boolean = true,
     animateEntry: Boolean = true,
@@ -82,9 +82,9 @@ fun WordBoard(
         animationSpec = tween(
             durationMillis = Duration.GameShowStandard.toInt(),
             easing = when (state) {
-                WordBoardState.Correct -> Easing.CorrectBounce
-                WordBoardState.Incorrect -> Easing.IncorrectShake
-                else -> Easing.Standard
+                WordBoardState.Correct -> GameShowEasing.CorrectBounce
+                WordBoardState.Incorrect -> GameShowEasing.IncorrectShake
+                else -> GameShowEasing.Standard
             }
         ),
         label = "WordBoard Scale"
@@ -107,7 +107,7 @@ fun WordBoard(
         elevation = CardDefaults.cardElevation(
             defaultElevation = GameShowElevation.WordDisplay
         ),
-        onClick = onWordClick
+        onClick = onWordClick ?: {}
     ) {
         Box(
             modifier = Modifier
@@ -156,12 +156,12 @@ private fun AnimatedWordDisplay(
             slideInVertically(
                 animationSpec = tween(
                     durationMillis = Duration.GameShowStandard.toInt(),
-                    easing = Easing.GameShowReveal
+                    easing = GameShowEasing.GameShowReveal
                 )
             ) { height -> height } togetherWith slideOutVertically(
                 animationSpec = tween(
                     durationMillis = Duration.GameShowFast.toInt(),
-                    easing = Easing.Standard
+                    easing = GameShowEasing.Standard
                 )
             ) { height -> -height }
         },
@@ -227,7 +227,7 @@ private fun PlaceholderWordDisplay(
 fun LetterTile(
     letter: Char,
     modifier: Modifier = Modifier,
-    style: LetterTileStyle = LetterTileStyle.Standard,
+    style: LetterTileStyle = LetterTileStyle(),
     state: LetterTileState = LetterTileState.Normal,
     animateEntry: Boolean = true
 ) {

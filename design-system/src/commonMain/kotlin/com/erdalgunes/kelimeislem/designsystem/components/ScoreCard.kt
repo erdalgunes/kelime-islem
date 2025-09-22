@@ -62,7 +62,8 @@ import com.erdalgunes.kelimeislem.designsystem.theme.GameTypography
 import com.erdalgunes.kelimeislem.designsystem.theme.PreviewThemes
 import com.erdalgunes.kelimeislem.designsystem.theme.TurkishGameShowThemeExtensions.gameShowColors
 import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
-import com.erdalgunes.kelimeislem.designsystem.tokens.Easing
+import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowEasing
+import com.erdalgunes.kelimeislem.designsystem.tokens.Elevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowElevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowSpacing
 import java.text.NumberFormat
@@ -76,7 +77,7 @@ fun ScoreCard(
     playerName: String,
     score: Int,
     modifier: Modifier = Modifier,
-    style: ScoreCardStyle = ScoreCardStyle.Standard,
+    style: ScoreCardStyle = ScoreCardStyle(),
     state: ScoreCardState = ScoreCardState.Normal,
     showTrend: Boolean = true,
     previousScore: Int = score,
@@ -94,8 +95,8 @@ fun ScoreCard(
         animationSpec = tween(
             durationMillis = Duration.GameShowStandard.toInt(),
             easing = when (state) {
-                ScoreCardState.Winner -> Easing.GameShowBounce
-                else -> Easing.Standard
+                ScoreCardState.Winner -> GameShowEasing.GameShowBounce
+                else -> GameShowEasing.Standard
             }
         ),
         label = "ScoreCard Scale"
@@ -393,7 +394,7 @@ private fun AnimatedScore(
         targetValue = animatedScore,
         animationSpec = tween(
             durationMillis = Duration.ScoreUpdate.toInt(),
-            easing = Easing.ScoreCount
+            easing = GameShowEasing.ScoreCount
         ),
         label = "Score Animation"
     )
@@ -443,7 +444,7 @@ private fun ScoreTrend(
             tint = if (isPositive) gameShowColors.ScorePositive else gameShowColors.ScoreNegative,
             modifier = Modifier
                 .size(16.dp)
-                .scale(scaleY = if (isPositive) 1f else -1f)
+                .scale(scaleX = 1f, scaleY = if (isPositive) 1f else -1f)
         )
         
         Text(
@@ -603,8 +604,8 @@ private fun getScoreColor(style: ScoreCardStyle, state: ScoreCardState): Color {
 @Composable
 private fun getElevation(state: ScoreCardState): androidx.compose.ui.unit.Dp {
     return when (state) {
-        ScoreCardState.Winner -> GameShowElevation.GameShowSpotlight
-        ScoreCardState.Leading -> GameShowElevation.GameShowFocused
+        ScoreCardState.Winner -> Elevation.GameShowSpotlight
+        ScoreCardState.Leading -> Elevation.GameShowFocused
         else -> GameShowElevation.ScoreCard
     }
 }

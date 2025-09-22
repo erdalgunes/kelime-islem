@@ -65,7 +65,7 @@ object Duration {
  * Material Design 3 easing curves
  * Enhanced with game show specific easing functions
  */
-object Easing {
+object GameShowEasing {
     
     // Standard Material 3 easing
     val Standard = FastOutSlowInEasing
@@ -106,8 +106,8 @@ object MotionPatterns {
     object WordReveal {
         const val letterDelay = 100L
         const val wordDuration = Duration.GameShowStandard
-        val letterEasing = Easing.GameShowReveal
-        val wordEasing = Easing.Emphasized
+        val letterEasing = GameShowEasing.GameShowReveal
+        val wordEasing = GameShowEasing.Emphasized
     }
     
     /**
@@ -116,8 +116,8 @@ object MotionPatterns {
     object ScoreUpdate {
         const val numberDuration = Duration.ScoreUpdate
         const val glowDuration = Duration.GameShowFast
-        val numberEasing = Easing.ScoreCount
-        val glowEasing = Easing.Standard
+        val numberEasing = GameShowEasing.ScoreCount
+        val glowEasing = GameShowEasing.Standard
     }
     
     /**
@@ -127,9 +127,9 @@ object MotionPatterns {
         const val normalDuration = Duration.TimerTick
         const val warningDuration = Duration.FinalCountdown
         const val criticalDuration = Duration.Short2
-        val normalEasing = Easing.TimerLinear
-        val warningEasing = Easing.TimerPulse
-        val criticalEasing = Easing.TimerAccelerate
+        val normalEasing = GameShowEasing.TimerLinear
+        val warningEasing = GameShowEasing.TimerPulse
+        val criticalEasing = GameShowEasing.TimerAccelerate
     }
     
     /**
@@ -139,9 +139,9 @@ object MotionPatterns {
         const val pressDuration = Duration.BuzzerPress
         const val releaseDuration = Duration.Short3
         const val activateDuration = Duration.BuzzerActivate
-        val pressEasing = Easing.GameShowSnap
-        val releaseEasing = Easing.Standard
-        val activateEasing = Easing.GameShowBounce
+        val pressEasing = GameShowEasing.GameShowSnap
+        val releaseEasing = GameShowEasing.Standard
+        val activateEasing = GameShowEasing.GameShowBounce
     }
     
     /**
@@ -151,9 +151,9 @@ object MotionPatterns {
         const val correctDuration = Duration.CorrectAnswer
         const val incorrectDuration = Duration.IncorrectAnswer
         const val revealDuration = Duration.ResultReveal
-        val correctEasing = Easing.CorrectBounce
-        val incorrectEasing = Easing.IncorrectShake
-        val revealEasing = Easing.GameShowReveal
+        val correctEasing = GameShowEasing.CorrectBounce
+        val incorrectEasing = GameShowEasing.IncorrectShake
+        val revealEasing = GameShowEasing.GameShowReveal
     }
     
     /**
@@ -162,8 +162,8 @@ object MotionPatterns {
     object ScreenTransition {
         const val enterDuration = Duration.EnterScreen
         const val exitDuration = Duration.ExitScreen
-        val enterEasing = Easing.EmphasizedDecelerate
-        val exitEasing = Easing.EmphasizedAccelerate
+        val enterEasing = GameShowEasing.EmphasizedDecelerate
+        val exitEasing = GameShowEasing.EmphasizedAccelerate
     }
 }
 
@@ -267,7 +267,7 @@ object AccessibilityMotion {
     /**
      * Get accessible easing (always standard for consistency)
      */
-    val AccessibleEasing = Easing.Standard
+    val AccessibleEasing = GameShowEasing.Standard
     
     /**
      * Check if motion should be reduced based on system settings

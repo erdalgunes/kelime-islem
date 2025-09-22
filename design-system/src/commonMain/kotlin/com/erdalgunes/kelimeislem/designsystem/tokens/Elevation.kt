@@ -6,6 +6,7 @@
 package com.erdalgunes.kelimeislem.designsystem.tokens
 
 import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -279,6 +280,7 @@ object ElevationUtils {
     /**
      * Create card elevation with game show styling
      */
+    @Composable
     fun gameShowCardElevation(
         defaultElevation: Dp = GameShowElevation.ScoreCard,
         pressedElevation: Dp = Elevation.Level1,

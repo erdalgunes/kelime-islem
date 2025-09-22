@@ -66,7 +66,7 @@ import com.erdalgunes.kelimeislem.designsystem.theme.GameTypography
 import com.erdalgunes.kelimeislem.designsystem.theme.PreviewThemes
 import com.erdalgunes.kelimeislem.designsystem.theme.TurkishGameShowThemeExtensions.gameShowColors
 import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
-import com.erdalgunes.kelimeislem.designsystem.tokens.Easing
+import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowEasing
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowElevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowSpacing
 import kotlinx.coroutines.delay
@@ -243,7 +243,7 @@ private fun CircularTimerBar(
         animationSpec = infiniteRepeatable(
             animation = tween(
                 durationMillis = Duration.FinalCountdown.toInt(),
-                easing = Easing.TimerPulse
+                easing = GameShowEasing.TimerPulse
             ),
             repeatMode = RepeatMode.Reverse
         ),
@@ -300,7 +300,7 @@ private fun CountdownTimerDisplay(
         animationSpec = infiniteRepeatable(
             animation = tween(
                 durationMillis = Duration.CountdownSecond.toInt(),
-                easing = Easing.GameShowBounce
+                easing = GameShowEasing.GameShowBounce
             ),
             repeatMode = RepeatMode.Reverse
         ),

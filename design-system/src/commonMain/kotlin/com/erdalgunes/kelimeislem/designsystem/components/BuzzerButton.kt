@@ -63,7 +63,8 @@ import com.erdalgunes.kelimeislem.designsystem.theme.GameTypography
 import com.erdalgunes.kelimeislem.designsystem.theme.PreviewThemes
 import com.erdalgunes.kelimeislem.designsystem.theme.TurkishGameShowThemeExtensions.gameShowColors
 import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
-import com.erdalgunes.kelimeislem.designsystem.tokens.Easing
+import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowEasing
+import com.erdalgunes.kelimeislem.designsystem.tokens.Elevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowElevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowSpacing
 
@@ -97,9 +98,9 @@ fun BuzzerButton(
         animationSpec = tween(
             durationMillis = Duration.BuzzerPress.toInt(),
             easing = when {
-                isPressed -> Easing.GameShowSnap
-                state == BuzzerState.Active -> Easing.GameShowBounce
-                else -> Easing.Standard
+                isPressed -> GameShowEasing.GameShowSnap
+                state == BuzzerState.Active -> GameShowEasing.GameShowBounce
+                else -> GameShowEasing.Standard
             }
         ),
         label = "Buzzer Scale"
@@ -496,7 +497,7 @@ private fun getBuzzerIconSize(size: BuzzerSize): Dp {
 private fun getElevation(state: BuzzerState, isPressed: Boolean): Dp {
     return when {
         isPressed -> GameShowElevation.BuzzerPressed
-        state == BuzzerState.Active -> GameShowElevation.GameShowFocused
+        state == BuzzerState.Active -> Elevation.GameShowFocused
         else -> GameShowElevation.Buzzer
     }
 }
