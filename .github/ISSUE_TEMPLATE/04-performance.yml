@@ -1,0 +1,153 @@
+name: ⚡ Performance Issue
+description: Report performance problems or suggest optimizations
+title: "[Performance]: "
+labels: ["performance", "needs-investigation"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a performance issue. Please provide detailed information to help us investigate and improve app performance.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues for similar performance problems
+          required: true
+        - label: I am using the latest version of the app
+          required: true
+        - label: I have tried clearing app cache/data
+          required: false
+
+  - type: dropdown
+    id: perf-type
+    attributes:
+      label: Performance Issue Type
+      description: What kind of performance issue are you experiencing?
+      options:
+        - Slow app startup
+        - UI lag/stuttering
+        - High memory usage
+        - High battery drain
+        - Slow network requests
+        - Animation jank
+        - Build time issues
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe the performance issue in detail
+      placeholder: |
+        The app becomes slow when...
+        
+        I notice lag when...
+        
+        Memory usage increases when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce the performance issue?
+      placeholder: |
+        1. Launch the app
+        2. Navigate to...
+        3. Perform action...
+        4. Observe performance issue
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-performance
+    attributes:
+      label: Expected Performance
+      description: What performance would you expect?
+      placeholder: |
+        The action should complete in less than...
+        
+        The UI should remain smooth at 60fps...
+        
+        Memory usage should stay below...
+
+  - type: textarea
+    id: actual-performance
+    attributes:
+      label: Actual Performance
+      description: What performance are you observing?
+      placeholder: |
+        The action takes ... seconds
+        
+        FPS drops to...
+        
+        Memory usage reaches...
+
+  - type: input
+    id: device-model
+    attributes:
+      label: Device Model
+      description: What device are you using?
+      placeholder: e.g., Pixel 8 Pro, Samsung Galaxy S24
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android Version
+      placeholder: e.g., Android 14
+    validations:
+      required: true
+
+  - type: input
+    id: device-ram
+    attributes:
+      label: Device RAM
+      placeholder: e.g., 8GB, 12GB
+
+  - type: input
+    id: available-storage
+    attributes:
+      label: Available Storage
+      placeholder: e.g., 50GB free of 128GB
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Frequency
+      description: How often does this issue occur?
+      options:
+        - Always
+        - Often (>50% of the time)
+        - Sometimes (10-50% of the time)
+        - Rarely (<10% of the time)
+    validations:
+      required: true
+
+  - type: textarea
+    id: profiling-data
+    attributes:
+      label: Profiling Data (if available)
+      description: |
+        If you have profiling data, please attach it here.
+        This could include:
+        - Android Studio profiler results
+        - Systrace output
+        - Memory dumps
+        - Screenshots of performance metrics
+      placeholder: Drag and drop files here or paste data
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other information that might help us investigate

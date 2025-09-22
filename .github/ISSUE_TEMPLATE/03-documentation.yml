@@ -1,0 +1,102 @@
+name: 📚 Documentation
+description: Suggest improvements or report issues in documentation
+title: "[Docs]: "
+labels: ["documentation"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve our documentation! Whether it's a typo, missing information, or suggestions for better explanations, we appreciate your feedback.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation does this relate to?
+      options:
+        - README
+        - API Documentation
+        - Architecture Documentation
+        - Setup/Installation Guide
+        - Contributing Guidelines
+        - Code Comments
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Where in the documentation is the issue? (file path or URL)
+      placeholder: e.g., README.md, docs/ARCHITECTURE.md
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      options:
+        - Missing information
+        - Incorrect information
+        - Unclear explanation
+        - Typo/Grammar
+        - Broken link
+        - Code example issue
+        - Suggestion for improvement
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Documentation
+      description: Quote or describe the current documentation (if applicable)
+      placeholder: |
+        The documentation currently states:
+        "..."
+      render: markdown
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: |
+        I suggest changing it to:
+        "..."
+        
+        Or adding a section about:
+        ...
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: Reason for Change
+      description: Why would this change improve the documentation?
+      placeholder: |
+        This change would help because...
+        
+        New users often struggle with...
+        
+        The current explanation doesn't cover...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I can submit a PR with these documentation changes
+          required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other information that might be helpful

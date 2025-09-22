@@ -1,0 +1,107 @@
+name: ❓ Question / Support
+description: Ask a question or request help
+title: "[Question]: "
+labels: ["question", "support"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about the project? Need help with something? You're in the right place!
+        
+        **Note**: For bug reports or feature requests, please use the appropriate templates.
+        
+        💡 **Tip**: Consider asking in [Discussions](https://github.com/erdalgunes/kelime-islem/discussions) for community help!
+
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: Question Category
+      description: What is your question about?
+      options:
+        - Setup / Installation
+        - Configuration
+        - Usage / How-to
+        - Architecture / Design
+        - Testing
+        - Contributing
+        - CI/CD
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: Please ask your question in detail
+      placeholder: |
+        How do I...?
+        
+        Why does...?
+        
+        What is the best way to...?
+        
+        I'm trying to understand...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide context about why you're asking this question
+      placeholder: |
+        I'm trying to...
+        
+        My use case is...
+        
+        I need this because...
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What I've Tried
+      description: What have you already tried or researched?
+      placeholder: |
+        I've looked at the documentation...
+        
+        I tried...
+        
+        I searched for...
+      render: markdown
+
+  - type: textarea
+    id: code-example
+    attributes:
+      label: Code Example (if applicable)
+      description: If your question involves code, please provide a minimal example
+      render: kotlin
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: How urgent is this question for you?
+      options:
+        - Not urgent (just curious)
+        - Low (can wait)
+        - Medium (needed soon)
+        - High (blocking my work)
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: Any other details that might help answer your question
+
+  - type: checkboxes
+    id: help
+    attributes:
+      label: How Can I Help?
+      description: Let us know how you might contribute
+      options:
+        - label: I can help document the answer once I understand it
+        - label: I'm willing to contribute a PR if guided
+        - label: I can help test solutions

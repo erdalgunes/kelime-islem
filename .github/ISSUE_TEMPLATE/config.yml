@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/erdalgunes/kelime-islem/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/erdalgunes/kelime-islem/tree/main/docs
+    about: Check out our documentation for guides and references
+  - name: 🔒 Security Issue
+    url: https://github.com/erdalgunes/kelime-islem/security/policy
+    about: Report security vulnerabilities privately
+  - name: 📊 SonarCloud Dashboard
+    url: https://sonarcloud.io/project/overview?id=erdalgunes_kelime-islem
+    about: View code quality metrics and analysis

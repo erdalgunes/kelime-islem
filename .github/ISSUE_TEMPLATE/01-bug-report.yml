@@ -1,0 +1,119 @@
+name: 🐛 Bug Report
+description: Create a report to help us improve
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the information below to help us understand and fix the issue.
+        
+        **Before submitting, please ensure you're using the latest version of the app.**
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please check the following before submitting your issue
+      options:
+        - label: I have searched the existing issues to make sure this bug hasn't been reported
+          required: true
+        - label: I am using the latest version of the app
+          required: true
+        - label: I have included reproduction steps
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: |
+        When I try to..., the app does... instead of...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Open the app
+        2. Navigate to '...'
+        3. Click on '...'
+        4. Observe the error
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: The app should...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Instead, the app...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - Critical (app crashes/data loss)
+        - High (feature broken)
+        - Medium (feature partially working)
+        - Low (minor inconvenience)
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android Version
+      description: What version of Android are you using?
+      placeholder: e.g., Android 14, Android 13
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device Model
+      description: What device are you using?
+      placeholder: e.g., Pixel 8 Pro, Samsung Galaxy S24
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App Version
+      description: What version of the app are you using?
+      placeholder: e.g., 1.0.0
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs/Screenshots
+      description: |
+        Please paste any relevant log output or attach screenshots.
+        Tip: You can attach images by clicking this area to highlight it and then dragging files in.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
