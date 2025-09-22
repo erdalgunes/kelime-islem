@@ -32,6 +32,7 @@ kotlin {
     }
 }
 
+
 android {
     namespace = "com.erdalgunes.kelimeislem.composeapp"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()

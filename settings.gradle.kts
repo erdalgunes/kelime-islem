@@ -30,7 +30,7 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositoriesMode = RepositoriesMode.PREFER_SETTINGS
     repositories {
         google {
             content {
@@ -40,6 +40,27 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        // Node.js distributions repository for Kotlin/JS
+        ivy {
+            name = "Distributions at https://nodejs.org/dist"
+            url = uri("https://nodejs.org/dist")
+            patternLayout {
+                artifact("v[revision]/[artifact]-v[revision]-[classifier].[ext]")
+            }
+            metadataSources { artifact() }
+            content { includeModule("org.nodejs", "node") }
+        }
+        
+        // Yarn distributions repository for Kotlin/JS
+        ivy {
+            name = "Distributions at https://github.com/yarnpkg/yarn/releases/download"
+            url = uri("https://github.com/yarnpkg/yarn/releases/download")
+            patternLayout {
+                artifact("v[revision]/[artifact]-v[revision].[ext]")
+            }
+            metadataSources { artifact() }
+            content { includeModule("com.yarnpkg", "yarn") }
+        }
     }
 }
 

@@ -20,7 +20,6 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.getByType
 import org.jetbrains.compose.ComposeExtension
-import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 class ComposeMultiplatformConventionPlugin : Plugin<Project> {
@@ -44,9 +43,6 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                             implementation(compose.dependencies.ui)
                             implementation(compose.dependencies.components.resources)
                             implementation(compose.dependencies.components.uiToolingPreview)
-                            implementation(libs.findLibrary("androidx.lifecycle.viewmodel").get())
-                            implementation(libs.findLibrary("androidx.lifecycle.runtime.compose").get())
-                            implementation(libs.findLibrary("androidx.navigation.compose").get())
                         }
                     }
                     
@@ -54,21 +50,23 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                         dependencies {
                             implementation(compose.dependencies.preview)
                             implementation(libs.findLibrary("androidx.activity.compose").get())
+                            implementation(libs.findLibrary("androidx.lifecycle.viewmodel").get())
+                            implementation(libs.findLibrary("androidx.lifecycle.runtime.compose").get())
+                            implementation(libs.findLibrary("androidx.navigation.compose").get())
                         }
                     }
                     
-                    // Add UI testing support for common tests
-                    findByName("commonTest")?.apply {
-                        dependencies {
-                            @OptIn(ExperimentalComposeLibrary::class)
-                            implementation(compose.dependencies.uiTestJUnit4)
-                        }
-                    }
-                    
-                    // Add Android-specific UI testing support
+                    // Add Android-specific UI testing support only
                     findByName("androidUnitTest")?.apply {
                         dependencies {
                             implementation(libs.findLibrary("compose.ui.test").get())
+                        }
+                    }
+                    
+                    // Add JS-specific Compose HTML dependencies
+                    findByName("jsMain")?.apply {
+                        dependencies {
+                            implementation(compose.dependencies.html.core)
                         }
                     }
                 }

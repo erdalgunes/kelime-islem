@@ -23,20 +23,44 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
 /**
- * Configure Kotlin Multiplatform for shared modules (Android-only focus)
+ * Configure Kotlin Multiplatform for shared modules (Android + JS targets)
  */
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
 internal fun Project.configureKotlinMultiplatform(
     extension: KotlinMultiplatformExtension
 ) = extension.apply {
     
-    // Android target only
+    // Android target
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
         // Enable instrumented tests
         instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+    }
+    
+    // JavaScript target for web
+    js(IR) {
+        binaries.executable()
+        browser {
+            runTask {
+                devServerProperty.set(
+                    org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.DevServer(
+                        open = true,
+                        port = 8080
+                    )
+                )
+            }
+            webpackTask {
+                // Enable production optimizations for smaller bundle size
+                mode = if (project.hasProperty("production")) {
+                    org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.Mode.PRODUCTION
+                } else {
+                    org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.Mode.DEVELOPMENT
+                }
+            }
+        }
+        nodejs()
     }
     
     // Configure common compiler options
@@ -63,12 +87,20 @@ internal fun Project.configureKotlinMultiplatform(
             dependencies {
                 implementation(libs.findLibrary("kotlin.test").get())
                 implementation(libs.findLibrary("kotlinx.coroutines.test").get())
+                implementation(libs.findBundle("kotest.common").get())
+                implementation(libs.findLibrary("kotest.framework.engine").get())
             }
         }
         
         androidMain {
             dependencies {
                 implementation(libs.findLibrary("kotlinx.coroutines.android").get())
+            }
+        }
+        
+        getByName("jsMain") {
+            dependencies {
+                implementation(libs.findLibrary("kotlinx.coroutines.core").get())
             }
         }
     }
