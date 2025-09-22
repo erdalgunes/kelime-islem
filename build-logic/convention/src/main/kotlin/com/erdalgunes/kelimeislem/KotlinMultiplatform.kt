@@ -51,6 +51,14 @@ internal fun Project.configureKotlinMultiplatform(
                     )
                 )
             }
+            webpackTask {
+                // Enable production optimizations for smaller bundle size
+                mode = if (project.hasProperty("production")) {
+                    org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.Mode.PRODUCTION
+                } else {
+                    org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.Mode.DEVELOPMENT
+                }
+            }
         }
         nodejs()
     }
@@ -79,6 +87,8 @@ internal fun Project.configureKotlinMultiplatform(
             dependencies {
                 implementation(libs.findLibrary("kotlin.test").get())
                 implementation(libs.findLibrary("kotlinx.coroutines.test").get())
+                implementation(libs.findBundle("kotest.common").get())
+                implementation(libs.findLibrary("kotest.framework.engine").get())
             }
         }
         

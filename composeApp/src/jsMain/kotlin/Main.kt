@@ -90,41 +90,49 @@ fun MerhabaWereldWebApp() {
             }
         }
         
-        Button(
+        Div(
             attrs = {
                 style {
-                    fontSize(16.px)
-                    padding(12.px, 24.px)
-                    backgroundColor(Color("#4CAF50"))
-                    color(Color.white)
-                    border(0.px)
-                    borderRadius(8.px)
-                    cursor("pointer")
-                    marginRight(8.px)
+                    display(DisplayStyle.Flex)
+                    gap(16.px)
+                    alignItems(AlignItems.Center)
                 }
-                onClick { presenter.handleEvent(MerhabaWereldEvent.Clicked) }
             }
         ) {
-            Text("Click Me!")
-        }
-        
-        if (state.value.clickCount > 0) {
             Button(
                 attrs = {
                     style {
                         fontSize(16.px)
                         padding(12.px, 24.px)
-                        backgroundColor(Color("#f44336"))
+                        backgroundColor(Color("#4CAF50"))
                         color(Color.white)
                         border(0.px)
                         borderRadius(8.px)
                         cursor("pointer")
-                        marginLeft(8.px)
                     }
-                    onClick { presenter.handleEvent(MerhabaWereldEvent.Reset) }
+                    onClick { presenter.handleEvent(MerhabaWereldEvent.Clicked) }
                 }
             ) {
-                Text("Reset")
+                Text("Click Me!")
+            }
+            
+            if (state.value.clickCount > 0) {
+                Button(
+                    attrs = {
+                        style {
+                            fontSize(16.px)
+                            padding(12.px, 24.px)
+                            backgroundColor(Color("#f44336"))
+                            color(Color.white)
+                            border(0.px)
+                            borderRadius(8.px)
+                            cursor("pointer")
+                        }
+                        onClick { presenter.handleEvent(MerhabaWereldEvent.Reset) }
+                    }
+                ) {
+                    Text("Reset")
+                }
             }
         }
     }
