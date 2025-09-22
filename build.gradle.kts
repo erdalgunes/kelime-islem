@@ -29,6 +29,16 @@ plugins {
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.kover) apply false
     id("kelimeislem.test.coverage")
+    id("org.sonarqube") version "5.1.0.4882"
+}
+
+// SonarCloud configuration
+sonarqube {
+    properties {
+        property("sonar.projectKey", "erdalgunes_kelime-islem")
+        property("sonar.organization", "erdalgunes")
+        property("sonar.host.url", "https://sonarcloud.io")
+    }
 }
 
 // Configure Kover for multi-module project

@@ -4,6 +4,9 @@ A Kotlin Multiplatform implementation of the popular Turkish word and number gam
 
 [![CI](https://github.com/erdalgunes/kelime-islem/actions/workflows/ci.yml/badge.svg)](https://github.com/erdalgunes/kelime-islem/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-98.9%25-brightgreen)](https://github.com/erdalgunes/kelime-islem)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=erdalgunes_kelime-islem&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=erdalgunes_kelime-islem)
+[![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=erdalgunes_kelime-islem&metric=coverage)](https://sonarcloud.io/summary/new_code?id=erdalgunes_kelime-islem)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=erdalgunes_kelime-islem&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=erdalgunes_kelime-islem)
 
 ## 🏗️ Architecture
 
