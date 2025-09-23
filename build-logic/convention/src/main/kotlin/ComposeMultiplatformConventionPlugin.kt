@@ -43,6 +43,7 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                             implementation(compose.dependencies.ui)
                             implementation(compose.dependencies.components.resources)
                             implementation(compose.dependencies.components.uiToolingPreview)
+                            implementation(libs.findLibrary("compose-material-icons-extended").get())
                         }
                     }
 
@@ -53,7 +54,7 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                             implementation(libs.findLibrary("androidx.lifecycle.viewmodel").get())
                             implementation(libs.findLibrary("androidx.lifecycle.runtime.compose").get())
                             implementation(libs.findLibrary("androidx.navigation.compose").get())
-                            implementation(libs.findLibrary("compose.material.icons.extended").get())
+                            implementation(libs.findLibrary("compose-material-icons-extended").get())
                         }
                     }
                     
