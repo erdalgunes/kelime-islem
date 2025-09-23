@@ -37,6 +37,12 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                 sourceSets.apply {
                     getByName("commonMain") {
                         dependencies {
+                            // Apply Compose BOM for version management
+                            val bom = libs.findLibrary("compose-bom")
+                            if (bom.isPresent) {
+                                implementation(platform(bom.get()))
+                            }
+                            
                             implementation(compose.dependencies.runtime)
                             implementation(compose.dependencies.foundation)
                             implementation(compose.dependencies.material3)
