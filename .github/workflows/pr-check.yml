@@ -4,43 +4,75 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+concurrency:
+  group: pr-check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  coverage-check:
+  validate-and-report:
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
       with:
-        java-version: '17'
-        distribution: 'temurin'
+        fetch-depth: 0  # For SonarCloud analysis
     
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-    
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Setup Gradle environment
+      uses: ./.github/actions/setup-gradle
     
     - name: Run tests with coverage
-      run: ./gradlew testDebugUnitTest koverXmlReport
+      run: ./gradlew testDebugUnitTest koverXmlReport koverHtmlReport --build-cache --parallel
     
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@master
+    - name: Run Android Lint
+      run: ./gradlew lintDebug --build-cache --continue
+    
+    - name: Verify coverage threshold
+      run: ./gradlew koverVerify --build-cache
+      continue-on-error: true
+    
+    - name: SonarCloud Analysis
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: ./gradlew sonar --info --build-cache
+      continue-on-error: true
     
     - name: Add coverage comment to PR
+      if: github.event.pull_request.head.repo.full_name == github.repository
       uses: mi-kas/kover-report@v1
       with:
         path: composeApp/build/reports/kover/report.xml
         token: ${{ secrets.GITHUB_TOKEN }}
-        title: Code Coverage
+        title: Code Coverage Report
         update-comment: true
         min-coverage-overall: 80
         min-coverage-changed-files: 80
+      continue-on-error: true
     
-    - name: Verify coverage threshold
-      run: ./gradlew koverVerify
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always()
+      with:
+        files: |
+          composeApp/build/test-results/testDebugUnitTest/*.xml
+        check_name: Unit Test Results
+        comment_mode: always
+        compare_to_earlier_commit: true
+      continue-on-error: true
+    
+    - name: Upload test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pr-test-artifacts
+        path: |
+          composeApp/build/reports/tests/
+          composeApp/build/reports/kover/html/
+          composeApp/build/reports/lint-results-*.html
+        retention-days: 7

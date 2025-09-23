@@ -38,7 +38,14 @@ sonarqube {
         property("sonar.projectKey", "erdalgunes_kelime-islem")
         property("sonar.organization", "erdalgunes")
         property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.coverage.jacoco.xmlReportPaths", 
+            "${projectDir}/composeApp/build/reports/kover/report.xml")
     }
+}
+
+// Ensure SonarQube runs after tests and coverage
+tasks.named("sonar") {
+    dependsOn("koverXmlReport")
 }
 
 // Configure Kover for multi-module project
