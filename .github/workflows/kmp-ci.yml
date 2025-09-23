@@ -65,7 +65,7 @@ jobs:
   # PARALLEL PLATFORM TESTING
   # ============================================
   test-matrix:
-    name: Test ${{ matrix.platform }} on ${{ matrix.os }}
+    name: Test - ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     needs: lint-and-analysis
 
@@ -80,18 +80,18 @@ jobs:
 
           - platform: desktop
             os: ubuntu-latest
-            task: :composeApp:desktopTest
-            report-path: composeApp/build/test-results/desktopTest/*.xml
+            task: :composeApp:testDesktopJvm
+            report-path: composeApp/build/test-results/testDesktopJvm/*.xml
 
           - platform: js
             os: ubuntu-latest
-            task: :composeApp:jsTest
-            report-path: composeApp/build/test-results/jsTest/*.xml
+            task: :composeApp:jsNodeTest
+            report-path: composeApp/build/test-results/jsNodeTest/*.xml
 
           - platform: ios
             os: macos-latest
-            task: :composeApp:iosSimulatorArm64Test
-            report-path: composeApp/build/test-results/iosSimulatorArm64Test/*.xml
+            task: :composeApp:iosX64Test
+            report-path: composeApp/build/test-results/iosX64Test/*.xml
 
     steps:
     - name: Checkout code

@@ -23,33 +23,12 @@ jobs:
 
     steps:
       - name: CodeRabbit Review
-        uses: coderabbit-ai/coderabbit-action@v1
+        uses: coderabbit-ai/ai-pr-reviewer@latest
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # CodeRabbit will use its own API key from the GitHub App installation
-          # No need to provide a token if using the GitHub App
-          review_config: |
-            review_level: "comprehensive"
-            enable_review: true
-            enable_suggestions: true
-            enable_security_analysis: true
-            enable_performance_analysis: true
-            language_specific:
-              kotlin:
-                - "Check for Kotlin multiplatform best practices"
-                - "Verify Compose patterns are followed"
-                - "Check for proper coroutine usage"
-              javascript:
-                - "Check for proper TypeScript types if applicable"
-                - "Verify async/await patterns"
-            custom_instructions: |
-              - Focus on Kotlin Multiplatform compatibility
-              - Check for platform-specific code in common modules
-              - Verify test coverage for new code
-              - Ensure proper resource management
-              - Check for accessibility concerns in UI code
-              - Verify that SonarCloud issues are addressed
           auto_review: true
-          fail_on_errors: false
 
   # ============================================
   # CLAUDE ENHANCED REVIEW (On-demand via @claude)
