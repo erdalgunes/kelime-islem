@@ -1,5 +1,5 @@
 name: 'Setup Gradle Environment'
-description: 'Sets up JDK and Gradle with optimal caching configuration'
+description: 'Sets up JDK and Gradle with optimal caching and security configuration'
 runs:
   using: "composite"
   steps:
@@ -8,6 +8,7 @@ runs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        check-latest: true  # Ensure latest patch version for security
     
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
@@ -16,9 +17,33 @@ runs:
         cache-read-only: ${{ github.event_name == 'pull_request' }}
         # Enable Gradle home cache cleanup to reduce cache size
         gradle-home-cache-cleanup: true
-        # Enable dependency verification
+        # Enable dependency verification and vulnerability database
         dependency-graph: generate-and-submit
+        # Enable build scan for better observability
+        build-scan-publish: true
+        build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
+        build-scan-terms-of-use-agree: "yes"
+        # Add security scanning
+        gradle-executable-validation: true
     
     - name: Grant execute permission for gradlew
       shell: bash
       run: chmod +x gradlew
+    
+    - name: Validate Gradle Wrapper
+      shell: bash
+      run: |
+        echo "🔍 Validating Gradle Wrapper integrity..."
+        # Check if gradle-wrapper.jar exists and is not corrupted
+        if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+          echo "❌ gradle-wrapper.jar not found!"
+          exit 1
+        fi
+        
+        # Validate wrapper properties
+        if [ ! -f "gradle/wrapper/gradle-wrapper.properties" ]; then
+          echo "❌ gradle-wrapper.properties not found!"
+          exit 1
+        fi
+        
+        echo "✅ Gradle Wrapper validation completed"

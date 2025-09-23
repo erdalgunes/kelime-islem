@@ -30,6 +30,10 @@ plugins {
     alias(libs.plugins.kover) apply false
     id("kelimeislem.test.coverage")
     id("org.sonarqube") version "5.1.0.4882"
+    // Supply chain security - SBOM generation
+    id("org.cyclonedx.bom") version "1.9.0"
+    // Dependency vulnerability scanning
+    id("org.owasp.dependencycheck") version "11.1.0"
 }
 
 // SonarCloud configuration - consolidated from sonar-project.properties
@@ -86,4 +90,65 @@ dependencies {
     kover(project(":composeApp"))
     // TODO: Add androidApp once it has tests
     // kover(project(":androidApp"))
+}
+
+// SBOM (Software Bill of Materials) Configuration
+cyclonedxBom {
+    // Include all configurations and dependencies
+    includeConfigs = listOf("runtimeClasspath", "compileClasspath")
+    // Output format: XML and JSON
+    outputFormat = "xml"
+    outputName = "kelime-islem-bom"
+    includeBomSerialNumber = true
+    includeMetadataResolution = true
+    // Component analysis
+    schemaVersion = "1.6"
+    destination = file("build/reports")
+}
+
+// Dependency vulnerability scanning configuration
+dependencyCheck {
+    // Output formats
+    format = "ALL"
+    outputDirectory = "build/reports/dependency-check"
+    
+    // Analysis configuration
+    analyzers.apply {
+        // Enable relevant analyzers for Kotlin/Android
+        assemblyEnabled = false
+        golangDepEnabled = false
+        golangModEnabled = false
+        nodeAuditEnabled = false
+        pyDistributionEnabled = false
+        pyPackageEnabled = false
+        rubygemsEnabled = false
+        cocoapodsEnabled = false
+        swiftEnabled = false
+        bundleAuditEnabled = false
+        
+        // Keep essential analyzers
+        jarEnabled = true
+        centralEnabled = true
+        nexusEnabled = true
+        mavenEnabled = true
+    }
+    
+    // Vulnerability database settings
+    nvd.apply {
+        apiKey = System.getenv("NVD_API_KEY") ?: ""
+        maxRetryCount = 3
+        delay = 2000
+    }
+    
+    // Fail build on CVSS score >= 7.0 (high/critical vulnerabilities)
+    failBuildOnCVSS = 7.0f
+    
+    // Suppress false positives if needed
+    suppressionFile = "dependency-check-suppressions.xml"
+}
+
+// Gradle dependency locking for reproducible builds
+dependencyLocking {
+    lockAllConfigurations()
+    lockMode = LockMode.STRICT
 }

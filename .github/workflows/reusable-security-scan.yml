@@ -1,0 +1,138 @@
+name: Reusable Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      scan-type:
+        description: 'Type of security scan to perform'
+        required: true
+        type: string
+        # Options: dependencies, code-analysis, secrets, sbom
+      fail-on-error:
+        description: 'Whether to fail the workflow on security issues'
+        required: false
+        type: boolean
+        default: true
+      upload-results:
+        description: 'Whether to upload scan results as artifacts'
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      SONAR_TOKEN:
+        required: false
+      SEMGREP_APP_TOKEN:
+        required: false
+      NVD_API_KEY:
+        required: false
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.scan-type }}
+  cancel-in-progress: true
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    name: ${{ inputs.scan-type }} Security Scan
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup environment
+      if: contains(inputs.scan-type, 'dependencies') || contains(inputs.scan-type, 'sbom')
+      uses: ./.github/actions/setup-gradle
+    
+    # Dependency Security Scanning
+    - name: Run dependency vulnerability scan
+      if: contains(inputs.scan-type, 'dependencies')
+      env:
+        NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      run: |
+        echo "🔒 Running dependency vulnerability scan..."
+        ./gradlew dependencyCheckAnalyze --build-cache || {
+          if [ "${{ inputs.fail-on-error }}" == "true" ]; then
+            echo "❌ Dependency vulnerabilities found!"
+            exit 1
+          else
+            echo "⚠️ Dependency vulnerabilities found (non-blocking)"
+          fi
+        }
+        echo "✅ Dependency scan completed"
+    
+    # SBOM Generation
+    - name: Generate SBOM
+      if: contains(inputs.scan-type, 'sbom')
+      run: |
+        echo "📋 Generating Software Bill of Materials..."
+        ./gradlew cyclonedxBom --build-cache
+        echo "✅ SBOM generated successfully"
+    
+    # Code Security Analysis
+    - name: Initialize CodeQL
+      if: contains(inputs.scan-type, 'code-analysis')
+      uses: github/codeql-action/init@v3
+      with:
+        languages: java-kotlin
+        build-mode: manual
+    
+    - name: Build for CodeQL analysis
+      if: contains(inputs.scan-type, 'code-analysis')
+      run: |
+        echo "🔨 Building project for CodeQL analysis..."
+        ./gradlew compileDebugKotlin --build-cache
+    
+    - name: Perform CodeQL Analysis
+      if: contains(inputs.scan-type, 'code-analysis')
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:java-kotlin"
+    
+    - name: Run Semgrep
+      if: contains(inputs.scan-type, 'code-analysis')
+      uses: semgrep/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/secrets
+          p/kotlin
+        generateSarif: "1"
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    
+    - name: Upload Semgrep results
+      if: contains(inputs.scan-type, 'code-analysis')
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: semgrep.sarif
+        category: semgrep
+    
+    # Secrets Scanning
+    - name: Run TruffleHog secrets scan
+      if: contains(inputs.scan-type, 'secrets')
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --debug --only-verified
+    
+    # Upload Results
+    - name: Upload scan results
+      if: inputs.upload-results && always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-${{ inputs.scan-type }}-results
+        path: |
+          build/reports/dependency-check/
+          build/reports/kelime-islem-bom.xml
+          semgrep.sarif
+        retention-days: 30
+        if-no-files-found: ignore

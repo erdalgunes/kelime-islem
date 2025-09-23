@@ -1,0 +1,169 @@
+name: Security Scan
+
+on:
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  security-events: write
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-security:
+    runs-on: ubuntu-latest
+    name: Dependency Security Scan
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Gradle environment
+      uses: ./.github/actions/setup-gradle
+    
+    - name: Run Gradle dependency check
+      run: |
+        echo "🔒 Scanning dependencies for security vulnerabilities..."
+        ./gradlew dependencyCheckAnalyze --build-cache || {
+          echo "❌ Dependency security scan failed!"
+          echo "Check for known vulnerabilities in dependencies."
+          # Don't fail on vulnerabilities in scheduled scans, but fail on PRs
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            exit 1
+          fi
+        }
+        echo "✅ Dependency security scan completed"
+    
+    - name: Generate dependency lock files
+      run: |
+        echo "🔒 Generating dependency lock files for reproducible builds..."
+        ./gradlew dependencies --write-locks || {
+          echo "❌ Failed to generate lock files!"
+          exit 1
+        }
+        echo "✅ Dependency lock files generated"
+    
+    - name: Upload dependency reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: dependency-security-reports
+        path: |
+          build/reports/dependency-check/
+          gradle/dependency-locks/
+        retention-days: 30
+
+  code-security:
+    runs-on: ubuntu-latest
+    name: Code Security Analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Gradle environment
+      uses: ./.github/actions/setup-gradle
+    
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: java-kotlin
+        build-mode: manual
+    
+    - name: Build project for CodeQL
+      run: ./gradlew compileDebugKotlin --build-cache
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:java-kotlin"
+    
+    - name: Run Semgrep security analysis
+      uses: semgrep/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/secrets
+          p/kotlin
+        generateSarif: "1"
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    
+    - name: Upload Semgrep results to GitHub
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: semgrep.sarif
+        category: semgrep
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    name: Secrets Scan
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for secrets scanning
+    
+    - name: Run TruffleHog secrets scan
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    name: Supply Chain Security
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Gradle environment
+      uses: ./.github/actions/setup-gradle
+    
+    - name: Generate SBOM (Software Bill of Materials)
+      run: |
+        echo "📋 Generating Software Bill of Materials..."
+        ./gradlew cyclonedxBom --build-cache
+        echo "✅ SBOM generation completed"
+    
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: |
+          build/reports/bom.xml
+          build/reports/bom.json
+        retention-days: 90
+    
+    - name: Run OSSF Scorecard
+      uses: ossf/scorecard-action@v2.4.0
+      with:
+        results_file: results.sarif
+        results_format: sarif
+        publish_results: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload OSSF Scorecard results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: results.sarif

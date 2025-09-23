@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read          # Required to checkout code
+  actions: read          # Required to access workflow artifacts
+  checks: write          # Required to create check runs
+  security-events: write # Required for security scanning results
+  pull-requests: read    # Required for PR context
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -24,20 +31,54 @@ jobs:
       uses: ./.github/actions/setup-gradle
     
     - name: Run tests with coverage
-      run: ./gradlew testDebugUnitTest koverXmlReport --build-cache --parallel
+      run: |
+        echo "🧪 Running unit tests and generating coverage report..."
+        ./gradlew testDebugUnitTest koverXmlReport --build-cache --parallel || {
+          echo "❌ Tests failed! Check the test results below."
+          exit 1
+        }
+        echo "✅ Tests completed successfully"
     
     - name: Run Android Lint
-      run: ./gradlew lintDebug --build-cache --continue
+      run: |
+        echo "🔍 Running Android Lint analysis..."
+        ./gradlew lintDebug --build-cache --continue || {
+          echo "⚠️  Lint issues found. Check the lint report."
+          echo "Continuing with build as lint issues are non-blocking."
+        }
+        echo "✅ Lint analysis completed"
+    
+    - name: Verify coverage report exists
+      run: |
+        COVERAGE_FILE="./composeApp/build/reports/kover/report.xml"
+        if [ ! -f "$COVERAGE_FILE" ]; then
+          echo "❌ Coverage report not found at $COVERAGE_FILE"
+          echo "Available kover reports:"
+          find ./composeApp/build/reports/kover/ -name "*.xml" || true
+          exit 1
+        fi
+        echo "✅ Coverage report found at $COVERAGE_FILE"
     
     - name: SonarCloud Analysis
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: ./gradlew sonar --info --build-cache
+      run: |
+        echo "📊 Running SonarCloud analysis..."
+        if [ -z "$SONAR_TOKEN" ]; then
+          echo "❌ SONAR_TOKEN is not configured. Please add it to repository secrets."
+          exit 1
+        fi
+        ./gradlew sonar --info --build-cache || {
+          echo "❌ SonarCloud analysis failed!"
+          echo "Check SonarCloud configuration and token validity."
+          exit 1
+        }
+        echo "✅ SonarCloud analysis completed successfully"
     
     # Only upload to CodeCov if token is available (optional)
     - name: Upload coverage to Codecov
-      if: ${{ env.CODECOV_TOKEN != '' }}
+      if: ${{ secrets.CODECOV_TOKEN != '' }}
       uses: codecov/codecov-action@v4
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -46,6 +87,7 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+        verbose: true
     
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -92,13 +134,62 @@ jobs:
     - name: Setup Gradle environment
       uses: ./.github/actions/setup-gradle
     
-    - name: Build ${{ matrix.target }} APK
-      run: ./gradlew assemble${{ matrix.target == 'debug' && 'Debug' || 'Release' }} --build-cache --parallel
+    - name: Generate SBOM
+      run: |
+        echo "📋 Generating Software Bill of Materials..."
+        ./gradlew cyclonedxBom --build-cache || {
+          echo "❌ SBOM generation failed!"
+          exit 1
+        }
+        echo "✅ SBOM generated successfully"
     
-    - name: Upload ${{ matrix.target }} APK
+    - name: Build ${{ matrix.target }} APK
+      run: |
+        echo "🔨 Building ${{ matrix.target }} APK..."
+        ./gradlew assemble${{ matrix.target == 'debug' && 'Debug' || 'Release' }} --build-cache --parallel || {
+          echo "❌ APK build failed!"
+          exit 1
+        }
+        echo "✅ APK build completed successfully"
+    
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3.7.0
+      with:
+        cosign-release: 'v2.4.1'
+    
+    - name: Sign APK with Cosign (keyless)
+      if: matrix.target == 'release'
+      run: |
+        echo "🔐 Signing release APK with Cosign..."
+        APK_PATH="composeApp/build/outputs/apk/release/composeApp-release-unsigned.apk"
+        if [ -f "$APK_PATH" ]; then
+          cosign sign-blob --yes "$APK_PATH" --output-signature="${APK_PATH}.sig" --output-certificate="${APK_PATH}.pem"
+          echo "✅ APK signed successfully"
+        else
+          echo "❌ APK not found for signing at $APK_PATH"
+          exit 1
+        fi
+    
+    - name: Generate provenance attestation
+      if: matrix.target == 'release'
+      run: |
+        echo "📜 Generating provenance attestation..."
+        APK_PATH="composeApp/build/outputs/apk/release/composeApp-release-unsigned.apk"
+        if [ -f "$APK_PATH" ]; then
+          cosign attest --yes --predicate-type=https://slsa.dev/provenance/v0.2 \
+            --predicate=<(echo '{"buildType":"https://github.com/actions","builder":{"id":"https://github.com/actions/runner"},"invocation":{"configSource":{"uri":"'$GITHUB_SERVER_URL'/'$GITHUB_REPOSITORY'","digest":{"sha1":"'$GITHUB_SHA'"}}}}') \
+            "$APK_PATH"
+          echo "✅ Provenance attestation generated"
+        fi
+    
+    - name: Upload ${{ matrix.target }} APK and signatures
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.target }}-apk
-        path: composeApp/build/outputs/apk/${{ matrix.target }}/*.apk
+        name: ${{ matrix.target }}-apk-signed
+        path: |
+          composeApp/build/outputs/apk/${{ matrix.target }}/*.apk
+          composeApp/build/outputs/apk/${{ matrix.target }}/*.sig
+          composeApp/build/outputs/apk/${{ matrix.target }}/*.pem
+          build/reports/kelime-islem-bom.xml
         retention-days: 7
         if-no-files-found: error

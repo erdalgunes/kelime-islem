@@ -4,48 +4,100 @@ permissions:
   contents: read
   checks: write
   pull-requests: write
+  security-events: write
+  actions: read
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
-  coverage-check:
+  pr-validation:
     runs-on: ubuntu-latest
+    name: PR Validation & Coverage Check
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
+    - name: Checkout PR code
+      uses: actions/checkout@v4
       with:
-        java-version: '17'
-        distribution: 'temurin'
+        fetch-depth: 0  # Needed for proper diff analysis
+        ref: ${{ github.event.pull_request.head.sha }}
     
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
+    - name: Setup Gradle environment
+      uses: ./.github/actions/setup-gradle
     
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Run comprehensive tests
+      run: |
+        echo "🧪 Running comprehensive test suite for PR..."
+        ./gradlew testDebugUnitTest koverXmlReport --build-cache --parallel || {
+          echo "❌ Tests failed in PR! Please fix failing tests."
+          exit 1
+        }
+        echo "✅ All tests passed"
     
-    - name: Run tests with coverage
-      run: ./gradlew testDebugUnitTest koverXmlReport
+    - name: Run Android Lint
+      run: |
+        echo "🔍 Running Android Lint for PR changes..."
+        ./gradlew lintDebug --build-cache
+        echo "✅ Lint analysis completed"
+    
+    - name: Verify coverage report exists
+      run: |
+        COVERAGE_FILE="./composeApp/build/reports/kover/report.xml"
+        if [ ! -f "$COVERAGE_FILE" ]; then
+          echo "❌ Coverage report missing at $COVERAGE_FILE"
+          exit 1
+        fi
+        echo "✅ Coverage report verified"
 
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@master
+    - name: SonarCloud PR Analysis
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        echo "📊 Running SonarCloud analysis for PR..."
+        ./gradlew sonar --info --build-cache \
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+          -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }} \
+          -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }} || {
+          echo "❌ SonarCloud PR analysis failed!"
+          exit 1
+        }
+        echo "✅ SonarCloud PR analysis completed"
 
     - name: Add coverage comment to PR
       uses: mi-kas/kover-report@v1
       with:
         path: composeApp/build/reports/kover/report.xml
-        token: ${{ secrets.PAT_COVERAGE_TOKEN }}
-        title: Code Coverage
+        token: ${{ secrets.PAT_COVERAGE_TOKEN || secrets.GITHUB_TOKEN }}
+        title: "📊 Code Coverage Report"
         update-comment: true
         min-coverage-overall: 80
         min-coverage-changed-files: 80
+        show-class-coverage: true
+        coverage-counter-type: LINE
     
     - name: Verify coverage threshold
-      run: ./gradlew koverVerify
+      run: |
+        echo "🎯 Verifying coverage meets minimum thresholds..."
+        ./gradlew koverVerify || {
+          echo "❌ Coverage threshold not met!"
+          echo "Please add tests to meet the minimum coverage requirements."
+          exit 1
+        }
+        echo "✅ Coverage threshold verified"
+    
+    - name: Upload PR artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: pr-validation-${{ github.event.pull_request.number }}
+        path: |
+          composeApp/build/reports/tests/testDebugUnitTest/
+          composeApp/build/reports/kover/
+          composeApp/build/reports/lint-results-debug.html
+        retention-days: 14
