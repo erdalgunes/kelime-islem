@@ -14,26 +14,19 @@
  * limitations under the License.
  */
 
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.kelimeislem.compose.multiplatform)
-    id("kelimeislem.kmp.test")
-    id("kelimeislem.test.coverage")
 }
 
 kotlin {
     sourceSets {
-        // Additional dependencies can be added here if needed
         commonMain.dependencies {
             // All compose dependencies are handled by the convention plugin
-            implementation(projects.designSystem)
         }
     }
 }
 
-
 android {
-    namespace = "com.erdalgunes.kelimeislem.composeapp"
+    namespace = "com.erdalgunes.kelimeislem.designsystem"
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
 }

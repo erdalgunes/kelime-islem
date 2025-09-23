@@ -32,13 +32,52 @@ plugins {
     id("org.sonarqube") version "5.1.0.4882"
 }
 
-// SonarCloud configuration
+// SonarCloud configuration - consolidated from sonar-project.properties
 sonarqube {
     properties {
+        // Project identification
         property("sonar.projectKey", "erdalgunes_kelime-islem")
         property("sonar.organization", "erdalgunes")
+        property("sonar.projectName", "Kelime İşlem")
+        property("sonar.projectVersion", "1.0")
         property("sonar.host.url", "https://sonarcloud.io")
+        
+        // Source code configuration - includes design-system module
+        property("sonar.sources", "composeApp/src/commonMain,composeApp/src/androidMain,design-system/src/commonMain")
+        property("sonar.tests", "composeApp/src/commonTest,composeApp/src/androidUnitTest")
+        property("sonar.java.binaries", "composeApp/build/classes")
+        
+        // Language configuration
+        property("sonar.language", "kotlin")
+        property("sonar.kotlin.source.version", "1.9")
+        property("sonar.kotlin.target.version", "17")
+        
+        // Coverage configuration
+        property("sonar.coverage.jacoco.xmlReportPaths", "${projectDir}/composeApp/build/reports/kover/report.xml")
+        
+        // Test results
+        property("sonar.junit.reportPaths", "composeApp/build/test-results/testDebugUnitTest")
+        
+        // Exclusions - UI files, generated code, and design-system from coverage
+        property("sonar.exclusions", "**/*Test.kt,**/*Spec.kt,**/test/**,**/androidTest/**,**/commonTest/**,**/ui/**,**/*Screen.kt,**/App.kt,**/build/**,**/*.gradle.kts,**/buildSrc/**,**/build-logic/**,**/design-system/**")
+        
+        // Coverage exclusions (UI components)
+        property("sonar.coverage.exclusions", "**/ui/**,**/*Screen.kt,**/App.kt,**/*Activity.kt,**/Platform.*.kt")
+        
+        // Quality gates and additional settings
+        property("sonar.qualitygate.wait", "true")
+        property("sonar.sourceEncoding", "UTF-8")
+        
+        // Project links
+        property("sonar.links.homepage", "https://github.com/erdalgunes/kelime-islem")
+        property("sonar.links.scm", "https://github.com/erdalgunes/kelime-islem")
+        property("sonar.links.issue", "https://github.com/erdalgunes/kelime-islem/issues")
     }
+}
+
+// Ensure SonarQube runs after tests and coverage
+tasks.named("sonar") {
+    dependsOn("koverXmlReport")
 }
 
 // Configure Kover for multi-module project
