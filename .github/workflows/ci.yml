@@ -24,7 +24,7 @@ jobs:
       run: ./gradlew help --no-daemon --quiet
     
     - name: Check Kotlin compilation (fail fast)
-      run: ./gradlew compileKotlinJs compileKotlinWasm --no-daemon --quiet
+      run: ./gradlew compileKotlinJs compileDebugKotlinAndroid --no-daemon --quiet
 
   validate:
     runs-on: ubuntu-latest
