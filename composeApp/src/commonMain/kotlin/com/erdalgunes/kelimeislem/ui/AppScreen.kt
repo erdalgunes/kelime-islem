@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +34,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.erdalgunes.kelimeislem.presentation.AppPresenter
 import com.erdalgunes.kelimeislem.presentation.AppState
+import com.erdalgunes.kelimeislem.designsystem.components.LetterTile
+import com.erdalgunes.kelimeislem.designsystem.components.LetterTileState
+import com.erdalgunes.kelimeislem.designsystem.components.MinimalCountdown
+import com.erdalgunes.kelimeislem.designsystem.components.SimpleGameButton
+import com.erdalgunes.kelimeislem.designsystem.components.WordBoard
+import com.erdalgunes.kelimeislem.designsystem.theme.TurkishGameShowTheme
 
 /**
  * Main application screen using Circuit pattern.
@@ -64,29 +71,72 @@ fun AppContent(
     state: AppState,
     modifier: Modifier = Modifier
 ) {
-    MaterialTheme {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            if (state.isLoading) {
+    TurkishGameShowTheme {
+        if (state.isLoading) {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
                 CircularProgressIndicator()
-            } else {
-                Text(
-                    text = state.greetingMessage,
-                    style = MaterialTheme.typography.headlineMedium,
-                    textAlign = TextAlign.Center
-                )
+            }
+        } else {
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                item {
+                    Text(
+                        text = state.greetingMessage,
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 
-                Text(
-                    text = state.appTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+                item {
+                    Text(
+                        text = "Modern Turkish Word Game Design System",
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                
+                item {
+                    WordBoard(word = "TÜRKÇE")
+                }
+                
+                item {
+                    androidx.compose.foundation.layout.Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        "KELIME".forEach { char ->
+                            LetterTile(
+                                letter = char,
+                                state = LetterTileState.Available,
+                                points = (1..5).random()
+                            )
+                        }
+                    }
+                }
+                
+                item {
+                    MinimalCountdown(
+                        totalSeconds = 60,
+                        currentSeconds = 45
+                    )
+                }
+                
+                item {
+                    SimpleGameButton(
+                        text = "Kelime Gönder",
+                        onClick = { }
+                    )
+                }
             }
         }
     }

@@ -1,6 +1,6 @@
-# Bir Kelime Bir İşlem
+# Bir Kelime Bir İşlem - Modern Design System
 
-A Kotlin Multiplatform implementation of the popular Turkish word and number game show "Bir Kelime Bir İşlem".
+A modern, mobile-first Kotlin Multiplatform word game featuring a comprehensive design system optimized for Turkish language support.
 
 [![CI](https://github.com/erdalgunes/kelime-islem/actions/workflows/ci.yml/badge.svg)](https://github.com/erdalgunes/kelime-islem/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-98.9%25-brightgreen)](https://github.com/erdalgunes/kelime-islem)
@@ -8,13 +8,31 @@ A Kotlin Multiplatform implementation of the popular Turkish word and number gam
 [![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=erdalgunes_kelime-islem&metric=coverage)](https://sonarcloud.io/summary/new_code?id=erdalgunes_kelime-islem)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=erdalgunes_kelime-islem&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=erdalgunes_kelime-islem)
 
+## 🎨 Modern Design System
+
+Built with **2025 best practices** featuring:
+- **Mobile-First Design**: 44dp touch targets, one-handed operation optimized
+- **Material Design 3**: Latest Google design system with Turkish localization
+- **Turkish Language Support**: Full character set (ç, ğ, ı, İ, ö, ş, ü) with proper İ/ı casing
+- **Responsive Components**: Adaptive layouts for all screen sizes
+- **Accessibility Ready**: High contrast, screen reader support, proper semantics
+
+### Design System Components
+
+- **LetterTile**: Interactive letter tiles with Turkish character support
+- **WordBoard**: Prominent word display with animation support
+- **WordGrid**: Interactive word formation and validation
+- **MinimalCountdown**: Clean circular timer for mobile games
+- **SimpleGameButton**: Touch-optimized action buttons
+- **ScoreDisplay**: Animated score components with Turkish number formatting
+
 ## 🏗️ Architecture
 
 This project follows the **Circuit** architecture pattern from Slack, providing:
 - Clear separation between UI and business logic
 - Unidirectional data flow
 - High testability (98.9% coverage for business logic)
-- Ready for multi-platform targets (Android, Web/WASM planned)
+- Modern Kotlin Multiplatform with Compose UI
 
 ## 🚀 Getting Started
 
@@ -75,27 +93,67 @@ The project maintains high test coverage using:
 ## 📁 Project Structure
 
 ```
-kelime-islem/
-├── composeApp/           # Main application module
+kelime-islem-design/
+├── design-system/        # Modern UI component library
+│   ├── src/commonMain/kotlin/com/erdalgunes/kelimeislem/designsystem/
+│   │   ├── components/   # Reusable UI components
+│   │   │   ├── LetterTile.kt
+│   │   │   ├── WordBoard.kt
+│   │   │   ├── WordGrid.kt
+│   │   │   ├── MinimalCountdown.kt
+│   │   │   ├── SimpleGameButton.kt
+│   │   │   └── ScoreDisplay.kt
+│   │   ├── theme/        # Design tokens and theming
+│   │   └── tokens/       # Design system tokens
+├── composeApp/           # Demo application
 │   ├── src/
-│   │   ├── commonMain/   # Shared code
-│   │   │   ├── kotlin/
-│   │   │   │   └── presentation/  # Presenters (business logic)
-│   │   │   │   └── ui/           # Composables (UI only)
+│   │   ├── commonMain/   # Shared demo code
 │   │   ├── androidMain/  # Android-specific code
 │   │   └── commonTest/   # Tests
-├── build-logic/          # Convention plugins
+├── build-logic/          # Convention plugins with modern KMP setup
 └── docs/                 # Documentation
 ```
 
-## 🏛️ Architecture Details
+## 🏛️ Design System Philosophy
 
-Following Circuit pattern:
-- **Presenters**: Contain all business logic, fully testable
-- **State**: Immutable data classes
-- **UI**: Pure Composables that only render state
+**Boy Scout Rule**: Leave code cleaner than you found it
+- No commented-out code or TODOs in production
+- Clean, minimal implementations over complex alternatives
+- Mobile-first responsive design
+- Turkish language as first-class citizen
 
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed information.
+**Modern Stack (2025)**:
+- **Kotlin 2.2.20** with latest multiplatform features
+- **Compose Multiplatform 1.8.0** with Material Design 3
+- **Gradle 8.13** with Convention Plugins for optimal build performance
+- **Type-safe dependencies** with version catalogs
+
+## 🎮 Usage
+
+```kotlin
+// Turkish game UI with modern components
+TurkishGameShowTheme {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        WordBoard(word = "TÜRKÇE")
+        
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            "KELIME".forEach { char ->
+                LetterTile(
+                    letter = char,
+                    state = LetterTileState.Available,
+                    points = getTurkishLetterValue(char)
+                )
+            }
+        }
+        
+        MinimalCountdown(totalSeconds = 60, currentSeconds = 45)
+        
+        SimpleGameButton(text = "Kelime Gönder") { 
+            submitWord() 
+        }
+    }
+}
+```
 
 ## 🤝 Contributing
 

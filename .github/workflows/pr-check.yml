@@ -1,5 +1,10 @@
 name: PR Check
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -25,18 +30,18 @@ jobs:
     
     - name: Run tests with coverage
       run: ./gradlew testDebugUnitTest koverXmlReport
-    
+
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    
+
     - name: Add coverage comment to PR
       uses: mi-kas/kover-report@v1
       with:
         path: composeApp/build/reports/kover/report.xml
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.PAT_COVERAGE_TOKEN }}
         title: Code Coverage
         update-comment: true
         min-coverage-overall: 80

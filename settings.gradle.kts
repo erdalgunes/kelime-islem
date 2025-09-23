@@ -71,6 +71,7 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 // Android-only modules
 include(":composeApp")
 include(":androidApp")
+include(":design-system")
 
 check(JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
     """
