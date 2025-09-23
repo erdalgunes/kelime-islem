@@ -43,7 +43,7 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                             implementation(compose.dependencies.ui)
                             implementation(compose.dependencies.components.resources)
                             implementation(compose.dependencies.components.uiToolingPreview)
-                            implementation(libs.findLibrary("compose.material.icons.extended").get())
+                            implementation(libs.findLibrary("compose-material-icons-extended").get())
                         }
                     }
                     

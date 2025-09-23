@@ -34,7 +34,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+// Preview import moved to Android source set
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.erdalgunes.kelimeislem.designsystem.theme.PreviewThemes
@@ -42,7 +42,15 @@ import com.erdalgunes.kelimeislem.designsystem.theme.TurkishGameShowThemeExtensi
 import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
 import com.erdalgunes.kelimeislem.designsystem.tokens.Elevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowEasing
-import java.util.Locale
+// Locale moved to platform-specific implementation
+
+/**
+ * Converts Turkish characters to uppercase using Turkish locale rules.
+ * This is a simplified version that handles the most common Turkish characters.
+ */
+private fun String.toTurkishUppercase(): String {
+    return this.uppercase().replace("I", "İ").replace("i", "İ")
+}
 
 /**
  * Interactive letter tile for Turkish word games
@@ -167,7 +175,7 @@ fun LetterTile(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = letter.uppercase(Locale("tr", "TR")),
+                    text = letter.toTurkishUppercase(),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontSize = dimensions.letterSize,
                         fontWeight = FontWeight.Bold
@@ -234,13 +242,13 @@ object TurkishAlphabet {
     val vowels = setOf('A', 'E', 'I', 'İ', 'O', 'Ö', 'U', 'Ü')
     val consonants = letters.filterNot { it in vowels }
     
-    fun isVowel(char: Char): Boolean = char.uppercase(Locale("tr", "TR"))[0] in vowels
+    fun isVowel(char: Char): Boolean = char.toString().toTurkishUppercase()[0] in vowels
 }
 
 /**
  * Preview composables
  */
-@Preview(name = "Letter Tile States")
+// @Preview(name = "Letter Tile States") - Moved to Android source set
 @Composable
 private fun LetterTileStatesPreview() {
     PreviewThemes.LightPreview {
