@@ -93,15 +93,14 @@ dependencies {
 }
 
 // SBOM (Software Bill of Materials) Configuration
-cyclonedxBom {
+tasks.cyclonedxBom {
     // Include all configurations and dependencies
     includeConfigs = listOf("runtimeClasspath", "compileClasspath")
-    // Output format: XML and JSON
+    // Output format: XML
     outputFormat = "xml"
     outputName = "kelime-islem-bom"
     includeBomSerialNumber = true
-    includeMetadataResolution = true
-    // Component analysis
+    // Component analysis  
     schemaVersion = "1.6"
     destination = file("build/reports")
 }
@@ -130,7 +129,6 @@ dependencyCheck {
         jarEnabled = true
         centralEnabled = true
         nexusEnabled = true
-        mavenEnabled = true
     }
     
     // Vulnerability database settings
