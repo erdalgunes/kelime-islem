@@ -11,8 +11,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  fail-fast-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup JDK and Gradle
+      uses: ./.github/actions/setup
+    
+    - name: Validate Gradle setup
+      run: ./gradlew help --no-daemon --quiet
+    
+    - name: Check Kotlin compilation (fail fast)
+      run: ./gradlew compileKotlinJs compileKotlinWasm --no-daemon --quiet
+
   validate:
     runs-on: ubuntu-latest
+    needs: fail-fast-check
     
     steps:
     - name: Checkout code

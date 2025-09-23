@@ -30,9 +30,11 @@ Get official docs for libraries and tools.
 3. **Check docs** - Use Context7 for official documentation
 4. **Test locally** - Run `./gradlew build` before committing
 
-## Current CI/CD Issues
-- PR #5: Practical CI fixes - needs Claude review workflow fix
-- PR #9: Security overhaul - overly complex, needs simplification
+## Current Focus Areas
+- Look for open PRs with `ci-cd` or `claude-review` labels
+- Simplify overly complex implementations when possible
+- Ensure CI workflows are practical and maintainable
+- Focus on build stability and developer experience
 
 ## Quick Commands
 ```bash
