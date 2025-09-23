@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.erdalgunes.kelimeislem.designsystem.theme.GameTypography
@@ -56,7 +55,6 @@ import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowEasing
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowElevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowSpacing
-import java.util.Locale
 
 /**
  * WordBoard component for displaying game words prominently
@@ -168,7 +166,7 @@ private fun AnimatedWordDisplay(
         label = "WordBoard Animation"
     ) { targetWord ->
         Text(
-            text = targetWord.uppercase(Locale("tr", "TR")),
+            text = targetWord.uppercase(),
             style = getTextStyle(style, state),
             color = getTextColor(style, state),
             textAlign = TextAlign.Center,
@@ -187,7 +185,7 @@ private fun StaticWordDisplay(
     state: WordBoardState
 ) {
     Text(
-        text = word.uppercase(Locale("tr", "TR")),
+        text = word.uppercase(),
         style = getTextStyle(style, state),
         color = getTextColor(style, state),
         textAlign = TextAlign.Center,
@@ -312,77 +310,5 @@ private fun getBackgroundBrush(style: WordBoardStyle, state: WordBoardState): Br
         else -> Brush.verticalGradient(
             colors = listOf(Color.Transparent, Color.Transparent)
         )
-    }
-}
-
-
-/**
- * Preview composables
- */
-@Preview(name = "WordBoard Normal")
-@Composable
-private fun WordBoardNormalPreview() {
-    PreviewThemes.LightPreview {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            WordBoard(
-                word = "KALEMİ",
-                state = WordBoardState.Normal
-            )
-        }
-    }
-}
-
-@Preview(name = "WordBoard States")
-@Composable
-private fun WordBoardStatesPreview() {
-    PreviewThemes.LightPreview {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            WordBoard(
-                word = "DOĞRU",
-                state = WordBoardState.Correct,
-                style = WordBoardStyle(variant = WordBoardVariant.Answer)
-            )
-            
-            WordBoard(
-                word = "YANLIŞ",
-                state = WordBoardState.Incorrect,
-                style = WordBoardStyle(variant = WordBoardVariant.Primary)
-            )
-            
-            WordBoard(
-                word = "İPUCU",
-                state = WordBoardState.Highlighted,
-                style = WordBoardStyle(variant = WordBoardVariant.Secondary)
-            )
-        }
-    }
-}
-
-
-@Preview(name = "WordBoard Dark")
-@Composable
-private fun WordBoardDarkPreview() {
-    PreviewThemes.DarkPreview {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            WordBoard(
-                word = "GÜNEŞLİ",
-                state = WordBoardState.Normal
-            )
-            
-            WordBoard(
-                word = "ÇÖZÜM",
-                state = WordBoardState.Correct,
-                style = WordBoardStyle(variant = WordBoardVariant.Answer)
-            )
-        }
     }
 }

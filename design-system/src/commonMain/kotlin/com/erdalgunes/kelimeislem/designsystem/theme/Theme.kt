@@ -6,17 +6,12 @@
 
 package com.erdalgunes.kelimeislem.designsystem.theme
 
-import android.os.Build
-import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 
 /**
  * Local composition providers for game-specific theme elements
@@ -49,24 +44,10 @@ fun TurkishGameShowTheme(
     content: @Composable () -> Unit
 ) {
     // Determine color scheme based on configuration
-    val colorScheme = when {
-        // Use dynamic colors on Android 12+ if enabled
-        config.useDynamicColors && supportsDynamicTheming() -> {
-            val context = LocalContext.current
-            if (darkTheme) {
-                dynamicDarkColorScheme(context)
-            } else {
-                dynamicLightColorScheme(context)
-            }
-        }
-        // Use custom Turkish game show colors
-        else -> {
-            if (darkTheme) {
-                DarkTurkishGameShowColors
-            } else {
-                LightTurkishGameShowColors
-            }
-        }
+    val colorScheme = if (darkTheme) {
+        DarkTurkishGameShowColors
+    } else {
+        LightTurkishGameShowColors
     }
     
     // Apply high contrast adjustments if enabled
@@ -185,8 +166,7 @@ private fun enhancedAccessibilityTypography(): androidx.compose.material3.Typogr
 /**
  * Check if dynamic theming is supported (Android 12+)
  */
-@ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
-fun supportsDynamicTheming() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+fun supportsDynamicTheming() = false // Dynamic theming not supported in commonMain
 
 /**
  * Extension functions for accessing game-specific theme elements

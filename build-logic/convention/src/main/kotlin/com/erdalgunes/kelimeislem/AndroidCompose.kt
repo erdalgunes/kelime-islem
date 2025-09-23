@@ -33,7 +33,7 @@ internal fun Project.configureAndroidCompose(
     }
 
     dependencies {
-        val bom = libs.findLibrary("compose.bom")
+        val bom = libs.findLibrary("compose-bom")
         if (bom.isPresent) {
             add("implementation", platform(bom.get()))
             add("androidTestImplementation", platform(bom.get()))

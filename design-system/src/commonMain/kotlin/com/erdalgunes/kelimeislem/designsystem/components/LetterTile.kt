@@ -34,15 +34,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.erdalgunes.kelimeislem.designsystem.theme.PreviewThemes
 import com.erdalgunes.kelimeislem.designsystem.theme.TurkishGameShowThemeExtensions.gameShowColors
 import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
 import com.erdalgunes.kelimeislem.designsystem.tokens.Elevation
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowEasing
-import java.util.Locale
 
 /**
  * Interactive letter tile for Turkish word games
@@ -167,7 +164,7 @@ fun LetterTile(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = letter.uppercase(Locale("tr", "TR")),
+                    text = letter.uppercase(),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontSize = dimensions.letterSize,
                         fontWeight = FontWeight.Bold
@@ -234,88 +231,5 @@ object TurkishAlphabet {
     val vowels = setOf('A', 'E', 'I', 'İ', 'O', 'Ö', 'U', 'Ü')
     val consonants = letters.filterNot { it in vowels }
     
-    fun isVowel(char: Char): Boolean = char.uppercase(Locale("tr", "TR"))[0] in vowels
-}
-
-/**
- * Preview composables
- */
-@Preview(name = "Letter Tile States")
-@Composable
-private fun LetterTileStatesPreview() {
-    PreviewThemes.LightPreview {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text("Tile States", style = MaterialTheme.typography.titleMedium)
-            
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                LetterTile(
-                    letter = 'A',
-                    state = LetterTileState.Available,
-                    points = 1
-                )
-                LetterTile(
-                    letter = 'Ç',
-                    state = LetterTileState.Selected,
-                    points = 4
-                )
-                LetterTile(
-                    letter = 'K',
-                    state = LetterTileState.Used,
-                    points = 5
-                )
-                LetterTile(
-                    letter = 'İ',
-                    state = LetterTileState.Correct,
-                    points = 1
-                )
-                LetterTile(
-                    letter = 'Ş',
-                    state = LetterTileState.Incorrect,
-                    points = 4
-                )
-            }
-            
-            Text("Tile Sizes", style = MaterialTheme.typography.titleMedium)
-            
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                LetterTile(
-                    letter = 'Ğ',
-                    size = LetterTileSize.Small,
-                    points = 5
-                )
-                LetterTile(
-                    letter = 'Ö',
-                    size = LetterTileSize.Standard,
-                    points = 3
-                )
-                LetterTile(
-                    letter = 'Ü',
-                    size = LetterTileSize.Large,
-                    points = 3
-                )
-            }
-            
-            Text("Turkish Characters", style = MaterialTheme.typography.titleMedium)
-            
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                "ÇĞIİÖŞÜ".forEach { char ->
-                    LetterTile(
-                        letter = char,
-                        points = (1..8).random(),
-                        size = LetterTileSize.Standard
-                    )
-                }
-            }
-        }
-    }
+    fun isVowel(char: Char): Boolean = char.uppercase()[0] in vowels
 }

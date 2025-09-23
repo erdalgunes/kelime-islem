@@ -18,6 +18,7 @@ import com.erdalgunes.kelimeislem.libs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.getByType
 import org.jetbrains.compose.ComposeExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -33,6 +34,14 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
             
             val compose = extensions.getByType<ComposeExtension>()
 
+            // Apply Compose BOM at project level for all configurations
+            dependencies {
+                val bom = libs.findLibrary("compose-bom")
+                if (bom.isPresent) {
+                    add("implementation", platform(bom.get()))
+                }
+            }
+
             extensions.configure<KotlinMultiplatformExtension> {
                 sourceSets.apply {
                     getByName("commonMain") {
@@ -43,10 +52,10 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                             implementation(compose.dependencies.ui)
                             implementation(compose.dependencies.components.resources)
                             implementation(compose.dependencies.components.uiToolingPreview)
-                            implementation(libs.findLibrary("compose.material.icons.extended").get())
+                            // Note: material-icons-extended is Android/JVM only, added to specific platforms below
                         }
                     }
-                    
+
                     getByName("androidMain") {
                         dependencies {
                             implementation(compose.dependencies.preview)
@@ -54,6 +63,14 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                             implementation(libs.findLibrary("androidx.lifecycle.viewmodel").get())
                             implementation(libs.findLibrary("androidx.lifecycle.runtime.compose").get())
                             implementation(libs.findLibrary("androidx.navigation.compose").get())
+                            implementation(libs.findLibrary("compose-material-icons-extended").get())
+                        }
+                    }
+                    
+                    // Add desktop-specific Compose HTML dependencies
+                    findByName("desktopMain")?.apply {
+                        dependencies {
+                            implementation(libs.findLibrary("compose-material-icons-extended").get())
                         }
                     }
                     

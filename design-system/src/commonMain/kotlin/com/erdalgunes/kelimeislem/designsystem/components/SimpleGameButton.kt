@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -31,7 +29,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.erdalgunes.kelimeislem.designsystem.theme.PreviewThemes
 import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
@@ -138,47 +135,3 @@ enum class GameButtonStyle {
     Outline     // Outlined button for tertiary actions
 }
 
-/**
- * Preview composables
- */
-@Preview(name = "Game Button Styles")
-@Composable
-private fun SimpleGameButtonPreview() {
-    PreviewThemes.LightPreview {
-        androidx.compose.foundation.layout.Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
-        ) {
-            SimpleGameButton(
-                text = "Kelime Gönder",
-                onClick = { },
-                style = GameButtonStyle.Primary
-            )
-            
-            SimpleGameButton(
-                text = "Pas Geç",
-                onClick = { },
-                style = GameButtonStyle.Secondary
-            )
-            
-            SimpleGameButton(
-                text = "İptal",
-                onClick = { },
-                style = GameButtonStyle.Outline
-            )
-            
-            SimpleGameButton(
-                text = "Doğru",
-                onClick = { },
-                icon = Icons.Default.Check,
-                style = GameButtonStyle.Primary
-            )
-            
-            SimpleGameButton(
-                text = "Devre Dışı",
-                onClick = { },
-                enabled = false
-            )
-        }
-    }
-}
