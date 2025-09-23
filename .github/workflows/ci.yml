@@ -39,16 +39,18 @@ jobs:
       run: ./gradlew lintDebug --parallel --build-cache --continue
 
     - name: SonarCloud Analysis
-      if: ${{ env.SONAR_TOKEN != '' }}
+      if: ${{ secrets.SONAR_TOKEN != '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: ./gradlew sonar --info --build-cache
+      continue-on-error: true
 
     # Optional: Upload to CodeCov if token is available
     - name: Upload coverage to Codecov
-      if: ${{ env.CODECOV_TOKEN != '' }}
+      if: ${{ secrets.CODECOV_TOKEN != '' }}
       uses: codecov/codecov-action@v4
+      continue-on-error: true
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:

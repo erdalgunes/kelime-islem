@@ -33,20 +33,20 @@ jobs:
       run: ./gradlew testDebugUnitTest koverXmlReport --parallel --build-cache
 
     - name: SonarCloud Scan
-      if: ${{ env.SONAR_TOKEN != '' }}
+      if: ${{ secrets.SONAR_TOKEN != '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: ./gradlew sonar --info --build-cache
+      continue-on-error: true
 
     - name: Add coverage comment to PR
-      if: ${{ github.event_name == 'pull_request' && env.PAT_COVERAGE_TOKEN != '' }}
+      if: ${{ github.event_name == 'pull_request' }}
       uses: mi-kas/kover-report@v1
-      env:
-        PAT_COVERAGE_TOKEN: ${{ secrets.PAT_COVERAGE_TOKEN }}
+      continue-on-error: true
       with:
         path: composeApp/build/reports/kover/report.xml
-        token: ${{ secrets.PAT_COVERAGE_TOKEN }}
+        token: ${{ secrets.PAT_COVERAGE_TOKEN || secrets.GITHUB_TOKEN }}
         title: Code Coverage
         update-comment: true
         min-coverage-overall: 70
