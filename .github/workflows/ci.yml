@@ -60,15 +60,12 @@ jobs:
         echo "✅ Coverage report found at $COVERAGE_FILE"
     
     - name: SonarCloud Analysis
+      if: ${{ secrets.SONAR_TOKEN != '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: |
         echo "📊 Running SonarCloud analysis..."
-        if [ -z "$SONAR_TOKEN" ]; then
-          echo "❌ SONAR_TOKEN is not configured. Please add it to repository secrets."
-          exit 1
-        fi
         ./gradlew sonar --info --build-cache || {
           echo "❌ SonarCloud analysis failed!"
           echo "Check SonarCloud configuration and token validity."

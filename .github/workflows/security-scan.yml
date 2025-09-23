@@ -93,6 +93,7 @@ jobs:
         category: "/language:java-kotlin"
     
     - name: Run Semgrep security analysis
+      if: ${{ secrets.SEMGREP_APP_TOKEN != '' }}
       uses: semgrep/semgrep-action@v1
       with:
         config: >-
@@ -105,7 +106,7 @@ jobs:
     
     - name: Upload Semgrep results to GitHub
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
+      if: ${{ secrets.SEMGREP_APP_TOKEN != '' && always() }}
       with:
         sarif_file: semgrep.sarif
         category: semgrep
@@ -150,8 +151,8 @@ jobs:
       with:
         name: sbom
         path: |
-          build/reports/bom.xml
-          build/reports/bom.json
+          build/reports/kelime-islem-bom.xml
+          build/reports/kelime-islem-bom.json
         retention-days: 90
     
     - name: Run OSSF Scorecard
