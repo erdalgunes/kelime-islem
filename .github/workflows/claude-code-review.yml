@@ -1,7 +1,7 @@
 name: Claude Code Review
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize]
     # Optional: Only run on specific file changes
     # paths:
@@ -31,7 +31,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run Claude Code Review
         id: claude-review
