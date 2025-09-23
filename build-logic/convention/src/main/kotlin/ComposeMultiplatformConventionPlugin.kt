@@ -52,7 +52,7 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                             implementation(compose.dependencies.ui)
                             implementation(compose.dependencies.components.resources)
                             implementation(compose.dependencies.components.uiToolingPreview)
-                            implementation(libs.findLibrary("compose-material-icons-extended").get())
+                            // Note: material-icons-extended is Android/JVM only, added to specific platforms below
                         }
                     }
 
@@ -63,6 +63,13 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                             implementation(libs.findLibrary("androidx.lifecycle.viewmodel").get())
                             implementation(libs.findLibrary("androidx.lifecycle.runtime.compose").get())
                             implementation(libs.findLibrary("androidx.navigation.compose").get())
+                            implementation(libs.findLibrary("compose-material-icons-extended").get())
+                        }
+                    }
+                    
+                    // Add desktop-specific Compose HTML dependencies
+                    findByName("desktopMain")?.apply {
+                        dependencies {
                             implementation(libs.findLibrary("compose-material-icons-extended").get())
                         }
                     }
