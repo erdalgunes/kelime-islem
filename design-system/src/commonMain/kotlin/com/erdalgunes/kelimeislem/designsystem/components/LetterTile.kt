@@ -175,7 +175,7 @@ fun LetterTile(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = letter.toTurkishUppercase(),
+                    text = letter.toString().toTurkishUppercase(),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontSize = dimensions.letterSize,
                         fontWeight = FontWeight.Bold
@@ -242,7 +242,7 @@ object TurkishAlphabet {
     val vowels = setOf('A', 'E', 'I', 'İ', 'O', 'Ö', 'U', 'Ü')
     val consonants = letters.filterNot { it in vowels }
     
-    fun isVowel(char: Char): Boolean = char.toString().toTurkishUppercase()[0] in vowels
+    fun isVowel(char: Char): Boolean = char.toString().toTurkishUppercase().first() in vowels
 }
 
 /**
