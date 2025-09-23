@@ -1,0 +1,196 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+jobs:
+  # ============================================
+  # CODERABBIT AUTOMATIC PR REVIEW
+  # ============================================
+  coderabbit-review:
+    name: CodeRabbit AI Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: CodeRabbit Review
+        uses: coderabbit-ai/coderabbit-action@v1
+        with:
+          # CodeRabbit will use its own API key from the GitHub App installation
+          # No need to provide a token if using the GitHub App
+          review_config: |
+            review_level: "comprehensive"
+            enable_review: true
+            enable_suggestions: true
+            enable_security_analysis: true
+            enable_performance_analysis: true
+            language_specific:
+              kotlin:
+                - "Check for Kotlin multiplatform best practices"
+                - "Verify Compose patterns are followed"
+                - "Check for proper coroutine usage"
+              javascript:
+                - "Check for proper TypeScript types if applicable"
+                - "Verify async/await patterns"
+            custom_instructions: |
+              - Focus on Kotlin Multiplatform compatibility
+              - Check for platform-specific code in common modules
+              - Verify test coverage for new code
+              - Ensure proper resource management
+              - Check for accessibility concerns in UI code
+              - Verify that SonarCloud issues are addressed
+          auto_review: true
+          fail_on_errors: false
+
+  # ============================================
+  # CLAUDE ENHANCED REVIEW (On-demand via @claude)
+  # ============================================
+  claude-on-demand:
+    name: Claude On-Demand Review
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+      metadata: read
+      repository-projects: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          additional_permissions: |
+            actions: read
+
+          prompt: |
+            You've been called to review code or answer a question. Please:
+            1. If this is a PR comment, review the relevant code changes
+            2. Check for KMP best practices and platform compatibility
+            3. Suggest improvements if needed
+            4. Be concise and actionable in your feedback
+
+            Context:
+            - This is a Kotlin Multiplatform project
+            - Targets: Android, iOS, Desktop, Web
+            - Uses Compose Multiplatform for UI
+            - Has SonarCloud quality gates
+
+            The user's request is in the comment that triggered this workflow.
+
+          claude_args: |
+            --allowed-tools "Bash(./gradlew test:*),Bash(./gradlew build:*),Bash(./gradlew kover*),Bash(./gradlew detekt),Bash(gh pr:*),Bash(gh issue:*),Read,Grep,WebSearch"
+
+  # ============================================
+  # CLAUDE AUTOMATIC PR LABELING
+  # ============================================
+  claude-auto-label:
+    name: Claude PR Labeling
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto-label PR with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          prompt: |
+            Analyze this pull request and add appropriate labels based on:
+
+            1. Type of change:
+               - 'feature' for new features
+               - 'bugfix' for bug fixes
+               - 'refactor' for code refactoring
+               - 'docs' for documentation
+               - 'test' for test additions/changes
+               - 'ci' for CI/CD changes
+               - 'deps' for dependency updates
+
+            2. Platforms affected:
+               - 'android' if Android code changed
+               - 'ios' if iOS code changed
+               - 'desktop' if Desktop code changed
+               - 'web' if Web/JS code changed
+               - 'common' if common/shared code changed
+
+            3. Priority/Review needs:
+               - 'needs-review' if complex changes requiring human review
+               - 'ready-to-merge' if straightforward and tests pass
+               - 'breaking-change' if APIs or behavior changed
+
+            Use `gh label add` to add the appropriate labels.
+            Only add labels that truly apply to this PR.
+
+          claude_args: |
+            --allowed-tools "Bash(gh label:*),Bash(gh pr view:*),Bash(gh pr diff:*)"
+
+  # ============================================
+  # COMPREHENSIVE AI REVIEW SUMMARY
+  # ============================================
+  ai-review-summary:
+    name: AI Review Summary
+    runs-on: ubuntu-latest
+    needs: [coderabbit-review]
+    if: github.event_name == 'pull_request' && always()
+    permissions:
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Post AI Review Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const message = `## 🤖 AI Review Summary
+
+            Your PR has been automatically reviewed by our AI assistants:
+
+            ✅ **CodeRabbit** - Automatic comprehensive review completed
+            ℹ️ **Claude** - Available on-demand by mentioning @claude in a comment
+            📊 **SonarCloud** - Code quality analysis in progress
+
+            ### Quick Actions:
+            - Need clarification? Comment with \`@claude explain [your question]\`
+            - Want deeper review? Comment with \`@claude review [specific file or concern]\`
+            - Check the Files tab for inline AI suggestions
+
+            All AI reviews are advisory. Human review is still recommended for critical changes.`;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: message
+            });
