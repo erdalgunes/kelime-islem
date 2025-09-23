@@ -33,11 +33,15 @@ jobs:
       run: ./gradlew testDebugUnitTest koverXmlReport --parallel --build-cache
 
     - name: SonarCloud Scan
-      if: ${{ secrets.SONAR_TOKEN != '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: ./gradlew sonar --info --build-cache
+      run: |
+        if [ -n "$SONAR_TOKEN" ]; then
+          ./gradlew sonar --info --build-cache
+        else
+          echo "Skipping SonarCloud analysis - SONAR_TOKEN not set"
+        fi
       continue-on-error: true
 
     - name: Add coverage comment to PR
@@ -46,7 +50,7 @@ jobs:
       continue-on-error: true
       with:
         path: composeApp/build/reports/kover/report.xml
-        token: ${{ secrets.PAT_COVERAGE_TOKEN || secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         title: Code Coverage
         update-comment: true
         min-coverage-overall: 70
