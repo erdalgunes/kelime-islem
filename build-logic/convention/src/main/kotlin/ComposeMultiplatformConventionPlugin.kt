@@ -18,6 +18,7 @@ import com.erdalgunes.kelimeislem.libs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.getByType
 import org.jetbrains.compose.ComposeExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -33,16 +34,18 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
             
             val compose = extensions.getByType<ComposeExtension>()
 
+            // Apply Compose BOM at project level for all configurations
+            dependencies {
+                val bom = libs.findLibrary("compose-bom")
+                if (bom.isPresent) {
+                    add("implementation", platform(bom.get()))
+                }
+            }
+
             extensions.configure<KotlinMultiplatformExtension> {
                 sourceSets.apply {
                     getByName("commonMain") {
                         dependencies {
-                            // Apply Compose BOM for version management
-                            val bom = libs.findLibrary("compose-bom")
-                            if (bom.isPresent) {
-                                implementation(platform(bom.get()))
-                            }
-                            
                             implementation(compose.dependencies.runtime)
                             implementation(compose.dependencies.foundation)
                             implementation(compose.dependencies.material3)
