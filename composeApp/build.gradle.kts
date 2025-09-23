@@ -28,6 +28,7 @@ kotlin {
         // Additional dependencies can be added here if needed
         commonMain.dependencies {
             // All compose dependencies are handled by the convention plugin
+            implementation(projects.designSystem)
         }
     }
 }

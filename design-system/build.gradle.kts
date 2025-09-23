@@ -28,4 +28,5 @@ kotlin {
 
 android {
     namespace = "com.erdalgunes.kelimeislem.designsystem"
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
 }

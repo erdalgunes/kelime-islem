@@ -220,58 +220,6 @@ private fun PlaceholderWordDisplay(
     }
 }
 
-/**
- * Individual letter display component
- */
-@Composable
-fun LetterTile(
-    letter: Char,
-    modifier: Modifier = Modifier,
-    style: LetterTileStyle = LetterTileStyle(),
-    state: LetterTileState = LetterTileState.Normal,
-    animateEntry: Boolean = true
-) {
-    val scale by animateFloatAsState(
-        targetValue = when (state) {
-            LetterTileState.Normal -> 1f
-            LetterTileState.Highlighted -> 1.1f
-            LetterTileState.Selected -> 1.15f
-        },
-        animationSpec = tween(Duration.GameShowFast.toInt()),
-        label = "Letter Scale"
-    )
-    
-    Surface(
-        modifier = modifier
-            .size(style.size)
-            .scale(scale),
-        shape = RoundedCornerShape(style.cornerRadius),
-        color = getLetterContainerColor(style, state),
-        shadowElevation = if (state == LetterTileState.Selected) 8.dp else 4.dp
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = if (state == LetterTileState.Selected) 2.dp else 1.dp,
-                    color = getLetterBorderColor(style, state),
-                    shape = RoundedCornerShape(style.cornerRadius)
-                )
-                .padding(4.dp)
-        ) {
-            Text(
-                text = letter.uppercase(Locale("tr", "TR")).toString(),
-                style = TextStyle(
-                    fontFamily = GameTypography.WordDisplay.fontFamily,
-                    fontSize = style.fontSize,
-                    fontWeight = FontWeight.Bold
-                ),
-                color = getLetterTextColor(style, state)
-            )
-        }
-    }
-}
 
 /**
  * WordBoard style configuration
@@ -312,14 +260,6 @@ data class LetterTileStyle(
     val fontSize: androidx.compose.ui.unit.TextUnit = 24.sp
 )
 
-/**
- * Letter tile state
- */
-enum class LetterTileState {
-    Normal,
-    Highlighted,
-    Selected
-}
 
 /**
  * Helper functions for styling
@@ -375,31 +315,6 @@ private fun getBackgroundBrush(style: WordBoardStyle, state: WordBoardState): Br
     }
 }
 
-@Composable
-private fun getLetterContainerColor(style: LetterTileStyle, state: LetterTileState): Color {
-    return when (state) {
-        LetterTileState.Selected -> MaterialTheme.colorScheme.primaryContainer
-        LetterTileState.Highlighted -> MaterialTheme.colorScheme.surfaceVariant
-        else -> MaterialTheme.colorScheme.surface
-    }
-}
-
-@Composable
-private fun getLetterTextColor(style: LetterTileStyle, state: LetterTileState): Color {
-    return when (state) {
-        LetterTileState.Selected -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-}
-
-@Composable
-private fun getLetterBorderColor(style: LetterTileStyle, state: LetterTileState): Color {
-    return when (state) {
-        LetterTileState.Selected -> MaterialTheme.colorScheme.primary
-        LetterTileState.Highlighted -> MaterialTheme.colorScheme.outline
-        else -> MaterialTheme.colorScheme.outlineVariant
-    }
-}
 
 /**
  * Preview composables
@@ -449,27 +364,6 @@ private fun WordBoardStatesPreview() {
     }
 }
 
-@Preview(name = "Letter Tiles")
-@Composable
-private fun LetterTilesPreview() {
-    PreviewThemes.LightPreview {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                LetterTile(letter = 'K', state = LetterTileState.Normal)
-                LetterTile(letter = 'E', state = LetterTileState.Highlighted)
-                LetterTile(letter = 'L', state = LetterTileState.Selected)
-                LetterTile(letter = 'İ', state = LetterTileState.Normal)
-                LetterTile(letter = 'M', state = LetterTileState.Normal)
-                LetterTile(letter = 'E', state = LetterTileState.Normal)
-            }
-        }
-    }
-}
 
 @Preview(name = "WordBoard Dark")
 @Composable

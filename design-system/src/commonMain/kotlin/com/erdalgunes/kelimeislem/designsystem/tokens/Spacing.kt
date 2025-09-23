@@ -71,20 +71,13 @@ object GameShowSpacing {
     val WordDisplayMargin: Dp = 24.dp
     val WordLetterSpacing: Dp = 8.dp
     
-    // Score display spacing
-    val ScoreCardPadding: Dp = 20.dp
-    val ScoreCardSpacing: Dp = 16.dp
+    // Score display spacing - for future ScoreDisplay component
+    val ScoreDisplayPadding: Dp = 20.dp
+    val ScoreDisplaySpacing: Dp = 16.dp
     val ScoreNumberSpacing: Dp = 12.dp
     
     // Timer spacing
-    val TimerBarHeight: Dp = 8.dp
-    val TimerBarSpacing: Dp = 16.dp
     val TimerDisplayPadding: Dp = 16.dp
-    
-    // Buzzer spacing
-    val BuzzerPadding: Dp = 20.dp
-    val BuzzerSpacing: Dp = 24.dp
-    val BuzzerMinTouchTarget: Dp = 48.dp
     
     // Game board spacing
     val GameBoardPadding: Dp = 24.dp
@@ -235,9 +228,8 @@ object SpacingUtils {
     fun getGameElementSpacing(elementType: GameElementType): Dp {
         return when (elementType) {
             GameElementType.WORD_DISPLAY -> GameShowSpacing.WordDisplayPadding
-            GameElementType.SCORE_CARD -> GameShowSpacing.ScoreCardPadding
+            GameElementType.SCORE_CARD -> GameShowSpacing.ScoreDisplayPadding
             GameElementType.TIMER -> GameShowSpacing.TimerDisplayPadding
-            GameElementType.BUZZER -> GameShowSpacing.BuzzerPadding
             GameElementType.RESULT -> GameShowSpacing.ResultPadding
             GameElementType.PLAYER_CARD -> GameShowSpacing.PlayerCardPadding
         }
@@ -251,7 +243,6 @@ enum class GameElementType {
     WORD_DISPLAY,
     SCORE_CARD,
     TIMER,
-    BUZZER,
     RESULT,
     PLAYER_CARD
 }

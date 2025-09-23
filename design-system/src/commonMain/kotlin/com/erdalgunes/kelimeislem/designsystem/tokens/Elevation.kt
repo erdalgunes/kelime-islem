@@ -73,8 +73,8 @@ object GameShowElevation {
     /**
      * Score card elevation - elevated for importance
      */
-    val ScoreCard = Elevation.GameShowElement
-    val ScoreCardShadow = ShadowColors.SpotlightShadow
+    val ScoreDisplay = Elevation.GameShowElement
+    val ScoreDisplayShadow = ShadowColors.SpotlightShadow
     
     /**
      * Timer elevation - floating above other elements
@@ -282,7 +282,7 @@ object ElevationUtils {
      */
     @Composable
     fun gameShowCardElevation(
-        defaultElevation: Dp = GameShowElevation.ScoreCard,
+        defaultElevation: Dp = GameShowElevation.ScoreDisplay,
         pressedElevation: Dp = Elevation.Level1,
         focusedElevation: Dp = Elevation.GameShowElement,
         hoveredElevation: Dp = Elevation.GameShowFocused
