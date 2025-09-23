@@ -42,14 +42,6 @@ class KmpTestConventionPlugin : Plugin<Project> {
                         implementation(libs.findLibrary("mockk.android").get())
                         implementation(libs.findLibrary("robolectric").get())
                     }
-                    
-                    jvmTest {
-                        dependencies {
-                            implementation(libs.findBundle("kotest.jvm").get())
-                            implementation(libs.findLibrary("kotest.runner.junit5").get())
-                            implementation(libs.findLibrary("kotest.framework.datatest").get())
-                        }
-                    }
                 }
             }
             
