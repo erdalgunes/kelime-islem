@@ -6,6 +6,7 @@
 package com.erdalgunes.kelimeislem.designsystem.tokens
 
 import androidx.compose.animation.core.CubicBezierEasing
+import kotlin.math.pow
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -213,7 +214,7 @@ object KeyframeTiming {
         const val accelerationFactor = 0.9f // Each letter appears slightly faster
         
         fun getLetterDelay(index: Int): Long {
-            return (baseDelay * Math.pow(accelerationFactor.toDouble(), index.toDouble())).toLong()
+            return (baseDelay * accelerationFactor.toDouble().pow(index.toDouble())).toLong()
         }
     }
     

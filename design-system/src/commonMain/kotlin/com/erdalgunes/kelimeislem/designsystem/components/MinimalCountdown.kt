@@ -35,10 +35,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.erdalgunes.kelimeislem.designsystem.theme.PreviewThemes
 import com.erdalgunes.kelimeislem.designsystem.theme.TurkishGameShowThemeExtensions.gameShowColors
 import com.erdalgunes.kelimeislem.designsystem.tokens.Duration
 import com.erdalgunes.kelimeislem.designsystem.tokens.GameShowEasing
@@ -235,59 +233,3 @@ fun AnimatedCountdownDemo(
     )
 }
 
-/**
- * Preview composables
- */
-@Preview(name = "Countdown States")
-@Composable
-private fun MinimalCountdownPreview() {
-    PreviewThemes.LightPreview {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("Normal State", style = MaterialTheme.typography.titleSmall)
-            MinimalCountdown(
-                totalSeconds = 60,
-                currentSeconds = 45,
-                size = CountdownSize.Medium
-            )
-            
-            Text("Warning State", style = MaterialTheme.typography.titleSmall)
-            MinimalCountdown(
-                totalSeconds = 60,
-                currentSeconds = 10,
-                size = CountdownSize.Medium
-            )
-            
-            Text("Critical State", style = MaterialTheme.typography.titleSmall)
-            MinimalCountdown(
-                totalSeconds = 60,
-                currentSeconds = 3,
-                size = CountdownSize.Medium
-            )
-            
-            Text("Different Sizes", style = MaterialTheme.typography.titleSmall)
-            androidx.compose.foundation.layout.Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                MinimalCountdown(
-                    totalSeconds = 30,
-                    currentSeconds = 15,
-                    size = CountdownSize.Small
-                )
-                MinimalCountdown(
-                    totalSeconds = 30,
-                    currentSeconds = 15,
-                    size = CountdownSize.Medium
-                )
-                MinimalCountdown(
-                    totalSeconds = 30,
-                    currentSeconds = 15,
-                    size = CountdownSize.Large
-                )
-            }
-        }
-    }
-}
