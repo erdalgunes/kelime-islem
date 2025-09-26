@@ -129,7 +129,7 @@ jobs:
                     f.filename.includes('/infrastructure/')
                   );
                   comment += `- **Why**: Changes detected in core system architecture\n`;
-                  comment += `- **Files**: ${coreFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${coreFiles.length > 3 ? \` and ${coreFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Files**: ${coreFiles.slice(0, 3).map(f => '`' + f.filename + '`').join(', ')}${coreFiles.length > 3 ? ` and ${coreFiles.length - 3} more` : ''}\n`;
                   comment += `- **Action**: Architecture team should review for design patterns, scalability, and system integration\n`;
                 } else if (label === 'needs/security-review') {
                   const securityFiles = files.filter(f =>
@@ -139,7 +139,7 @@ jobs:
                     f.filename.includes('Permission')
                   );
                   comment += `- **Why**: Security-sensitive code detected\n`;
-                  comment += `- **Files**: ${securityFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${securityFiles.length > 3 ? \` and ${securityFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Files**: ${securityFiles.slice(0, 3).map(f => '`' + f.filename + '`').join(', ')}${securityFiles.length > 3 ? ` and ${securityFiles.length - 3} more` : ''}\n`;
                   comment += `- **Action**: Security team should review for vulnerabilities, proper authentication, and data protection\n`;
                 } else if (label === 'needs/performance-review') {
                   const perfFiles = files.filter(f =>
@@ -149,7 +149,7 @@ jobs:
                     f.filename.includes('PerformanceMonitor')
                   );
                   comment += `- **Why**: Performance-critical components modified\n`;
-                  comment += `- **Files**: ${perfFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${perfFiles.length > 3 ? \` and ${perfFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Files**: ${perfFiles.slice(0, 3).map(f => '`' + f.filename + '`').join(', ')}${perfFiles.length > 3 ? ` and ${perfFiles.length - 3} more` : ''}\n`;
                   comment += `- **Action**: Performance team should review for optimization opportunities and potential bottlenecks\n`;
                 } else if (label === 'needs/database-review') {
                   const dbFiles = files.filter(f =>
@@ -159,7 +159,7 @@ jobs:
                     f.filename.includes('Schema')
                   );
                   comment += `- **Why**: Database schema or query changes detected\n`;
-                  comment += `- **Files**: ${dbFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${dbFiles.length > 3 ? \` and ${dbFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Files**: ${dbFiles.slice(0, 3).map(f => '`' + f.filename + '`').join(', ')}${dbFiles.length > 3 ? ` and ${dbFiles.length - 3} more` : ''}\n`;
                   comment += `- **Action**: Database team should review for migrations, performance, and data integrity\n`;
                 } else if (label === 'needs/kmp-review') {
                   const kmpFiles = files.filter(f =>
@@ -168,7 +168,7 @@ jobs:
                     f.filename.includes('/jsMain/')
                   );
                   comment += `- **Why**: Kotlin Multiplatform code changes detected\n`;
-                  comment += `- **Files**: ${kmpFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${kmpFiles.length > 3 ? \` and ${kmpFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Files**: ${kmpFiles.slice(0, 3).map(f => '`' + f.filename + '`').join(', ')}${kmpFiles.length > 3 ? ` and ${kmpFiles.length - 3} more` : ''}\n`;
                   comment += `- **Action**: KMP expert should review for platform compatibility and proper expect/actual implementations\n`;
                 } else if (label === 'needs/ui-review') {
                   const uiFiles = files.filter(f =>
@@ -178,7 +178,7 @@ jobs:
                     f.filename.includes('Style')
                   );
                   comment += `- **Why**: User interface changes detected\n`;
-                  comment += `- **Files**: ${uiFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${uiFiles.length > 3 ? \` and ${uiFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Files**: ${uiFiles.slice(0, 3).map(f => '`' + f.filename + '`').join(', ')}${uiFiles.length > 3 ? ` and ${uiFiles.length - 3} more` : ''}\n`;
                   comment += `- **Action**: UI/UX team should review for design consistency and user experience\n`;
                 } else if (label === 'needs/test-review') {
                   const testFiles = files.filter(f =>
@@ -186,7 +186,7 @@ jobs:
                     f.filename.includes('/test/')
                   );
                   comment += `- **Why**: Test coverage or test implementation changes\n`;
-                  comment += `- **Files**: ${testFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${testFiles.length > 3 ? \` and ${testFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Files**: ${testFiles.slice(0, 3).map(f => '`' + f.filename + '`').join(', ')}${testFiles.length > 3 ? ` and ${testFiles.length - 3} more` : ''}\n`;
                   comment += `- **Action**: QA team should review test coverage and test quality\n`;
                 }
                 comment += `\n`;
@@ -264,7 +264,7 @@ jobs:
             } else if (reviewLabels.length > 0) {
               comment += `1. 🔍 Specialists needed for: ${reviewLabels.map(l => l.replace('needs/', '')).join(', ')}\n`;
               comment += `2. 📋 Review the specific areas mentioned above\n`;
-              comment += `3. ✅ Add \`approved/*\` labels when your review is complete\n`;
+              comment += `3. ✅ Add 'approved/*' labels when your review is complete\n`;
               comment += `4. 🚀 PR can be merged when all required reviews are done\n`;
             } else {
               comment += `1. ⏳ Waiting for automated checks to complete\n`;
