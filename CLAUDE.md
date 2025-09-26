@@ -36,13 +36,12 @@ Get official docs for libraries and tools.
 - Ensure CI workflows are practical and maintainable
 - Focus on build stability and developer experience
 
-## Codegen Integration
-- **Codegen GitHub App**: Already installed and configured
-- **Organization ID**: 4969
-- **Repository ID**: 140699
-- **Integration Status**: Active - CodeRabbit → Codegen workflow operational
-- **Trigger Format**: `@codegen-sh` mentions automatically posted when CodeRabbit flags issues
-- **Workflow File**: `.github/workflows/coderabbit-codegen.yml`
+## Codegen Integration Status
+- **Repository**: Configured in org 4969, fully operational
+- **Auto-trigger**: @codegen-sh mentions via CodeRabbit workflow
+- **Manual backup**: GitHub Actions → workflow_dispatch (PR #, description)
+- **Test command**: `gh pr comment <pr> --body "@codegen-sh <task>"`
+- **Workflow**: `.github/workflows/coderabbit-codegen.yml`
 
 ## Quick Commands
 ```bash
