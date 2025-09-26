@@ -42,6 +42,17 @@ else
     echo -e "${YELLOW}⚠️  Action version validator not found${NC}"
 fi
 
+# Check for common workflow issues
+echo -e "${YELLOW}🔍 Checking for common workflow issues...${NC}"
+
+# Check for dependency-graph in PRs without proper permissions
+if grep -q "dependency-graph: generate-and-submit" .github/workflows/*.yml 2>/dev/null; then
+    echo -e "${YELLOW}  ⚠️  Found 'generate-and-submit' in workflows - ensure proper permissions${NC}"
+    if ! grep -q "permissions:" .github/workflows/*.yml 2>/dev/null; then
+        echo -e "${RED}  ❌ No permissions block found - this may cause failures in PRs${NC}"
+    fi
+fi
+
 # Check if required Gradle tasks exist
 echo -e "${YELLOW}🔨 Checking available Gradle tasks...${NC}"
 if [ -f "./gradlew" ]; then

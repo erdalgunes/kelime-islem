@@ -34,6 +34,7 @@ jobs:
       with:
         gradle-cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+        dependency-graph-mode: 'disabled'
 
     - name: Run lint checks
       run: ./gradlew :composeApp:lint --continue
@@ -56,6 +57,10 @@ jobs:
     name: Test - ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     needs: lint-and-analysis
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
 
     strategy:
       fail-fast: false
@@ -80,6 +85,8 @@ jobs:
       with:
         gradle-cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+        dependency-graph-mode: 'disabled'
+        dependency-graph-mode: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'generate-and-submit' || 'disabled' }}
 
     - name: Run ${{ matrix.platform }} tests
       run: |
@@ -128,6 +135,7 @@ jobs:
       with:
         gradle-cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+        dependency-graph-mode: 'disabled'
 
     - name: Run tests with coverage
       run: ./gradlew :composeApp:testDebugUnitTest :composeApp:koverXmlReport :composeApp:koverHtmlReport --build-cache
@@ -236,6 +244,7 @@ jobs:
       with:
         gradle-cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+        dependency-graph-mode: 'disabled'
 
     - name: Build debug APK
       run: ./gradlew :composeApp:assembleDebug

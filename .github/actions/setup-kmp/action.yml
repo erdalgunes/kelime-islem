@@ -18,6 +18,11 @@ inputs:
     required: false
     default: 'false'
 
+  dependency-graph-mode:
+    description: 'Dependency graph mode: generate, generate-and-submit, or disabled'
+    required: false
+    default: 'generate'
+
 runs:
   using: "composite"
   steps:
@@ -36,7 +41,7 @@ runs:
         cache-read-only: ${{ inputs.cache-read-only }}
         cache-write-only: false
         generate-job-summary: true
-        dependency-graph: generate-and-submit
+        dependency-graph: ${{ inputs.dependency-graph-mode }}
 
     - name: Cache Kotlin/Native compiler
       uses: actions/cache@v4
