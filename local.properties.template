@@ -1,0 +1,23 @@
+# Local Properties Template
+# Copy this file to local.properties and fill in your actual values
+# IMPORTANT: Never commit local.properties to version control!
+
+# SDK paths (usually auto-configured by Android Studio)
+sdk.dir=/path/to/your/android/sdk
+ndk.dir=/path/to/your/android/ndk
+
+# API Keys for Development (KEEP THESE SECURE!)
+# CodeRabbit API Key for development/testing
+# Get your API key from: https://app.coderabbit.ai/settings/api
+CODERABBIT_API_KEY=your_actual_api_key_here
+
+# Other API keys can be added here
+# EXAMPLE_API_KEY=your_other_api_key
+
+# Development Configuration
+# Set to true to enable debug features
+DEBUG_MODE=true
+
+# Test Configuration
+# Set to true to run integration tests that require API keys
+ENABLE_INTEGRATION_TESTS=false

@@ -36,4 +36,22 @@ kotlin {
 
 android {
     namespace = "com.erdalgunes.kelimeislem.composeapp"
+    
+    // Build configuration for handling environment variables securely
+    buildTypes {
+        debug {
+            // Debug builds can use environment variables for API keys
+            buildConfigField("String", "CODERABBIT_API_KEY", "\"${System.getenv("CODERABBIT_API_KEY") ?: ""}\"")
+            buildConfigField("String", "BUILD_TYPE", "\"debug\"")
+        }
+        release {
+            // Release builds should never include API keys in the APK
+            buildConfigField("String", "CODERABBIT_API_KEY", "\"\"")
+            buildConfigField("String", "BUILD_TYPE", "\"release\"")
+        }
+    }
+    
+    buildFeatures {
+        buildConfig = true
+    }
 }
