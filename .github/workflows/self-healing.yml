@@ -1,0 +1,125 @@
+name: Self-Healing CI/CD
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  detect-and-fix:
+    name: Detect Issues & Spawn Fix Agents
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install requests
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run linting check
+        id: lint
+        continue-on-error: true
+        run: |
+          npm run lint 2>&1 | tee lint-output.log
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Run tests
+        id: test
+        continue-on-error: true
+        run: |
+          npm test -- --passWithNoTests 2>&1 | tee test-output.log
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Run build
+        id: build
+        continue-on-error: true
+        run: |
+          npm run build 2>&1 | tee build-output.log
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Check for security vulnerabilities
+        id: security
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=high 2>&1 | tee security-output.log
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Spawn Codegen agents for failures
+        if: steps.lint.outputs.exit_code != '0' || steps.test.outputs.exit_code != '0' || steps.build.outputs.exit_code != '0' || steps.security.outputs.exit_code != '0'
+        env:
+          CODEGEN_API_KEY: ${{ secrets.CODEGEN_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          echo "🔍 Detected issues, spawning Codegen agents..."
+
+          # Spawn agent for each type of failure
+          if [ "${{ steps.lint.outputs.exit_code }}" != "0" ]; then
+            echo "Spawning agent for lint errors..."
+            python .github/scripts/spawn_agent.py lint "$(tail -50 lint-output.log)"
+          fi
+
+          if [ "${{ steps.test.outputs.exit_code }}" != "0" ]; then
+            echo "Spawning agent for test failures..."
+            python .github/scripts/spawn_agent.py test "$(tail -50 test-output.log)"
+          fi
+
+          if [ "${{ steps.build.outputs.exit_code }}" != "0" ]; then
+            echo "Spawning agent for build errors..."
+            python .github/scripts/spawn_agent.py build "$(tail -50 build-output.log)"
+          fi
+
+          if [ "${{ steps.security.outputs.exit_code }}" != "0" ]; then
+            echo "Spawning agent for security issues..."
+            python .github/scripts/spawn_agent.py security "$(tail -50 security-output.log)"
+          fi
+
+      - name: Post status comment
+        if: github.event_name == 'pull_request' && (steps.lint.outputs.exit_code != '0' || steps.test.outputs.exit_code != '0' || steps.build.outputs.exit_code != '0' || steps.security.outputs.exit_code != '0')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = [];
+            if ('${{ steps.lint.outputs.exit_code }}' !== '0') issues.push('Linting');
+            if ('${{ steps.test.outputs.exit_code }}' !== '0') issues.push('Tests');
+            if ('${{ steps.build.outputs.exit_code }}' !== '0') issues.push('Build');
+            if ('${{ steps.security.outputs.exit_code }}' !== '0') issues.push('Security');
+
+            const body = `## 🤖 Self-Healing Activated
+
+            Detected issues with: ${issues.join(', ')}
+
+            Codegen.sh agents have been spawned to automatically fix these issues.
+            They will create fix commits or PRs shortly.
+
+            Track progress at: https://codegen.com/`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

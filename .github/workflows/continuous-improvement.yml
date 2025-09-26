@@ -5,19 +5,6 @@ on:
     # Run daily at 2 AM UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
-    inputs:
-      focus_area:
-        description: 'Area to focus improvements on'
-        required: false
-        type: choice
-        options:
-          - all
-          - performance
-          - security
-          - tests
-          - documentation
-          - tech-debt
-        default: 'all'
 
 permissions:
   contents: write
