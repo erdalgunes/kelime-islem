@@ -39,7 +39,7 @@ runs:
         dependency-graph: generate-and-submit
 
     - name: Cache Kotlin/Native compiler
-      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.1
+      uses: actions/cache@v4
       with:
         path: ~/.konan
         key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
@@ -47,7 +47,7 @@ runs:
           ${{ runner.os }}-konan-
 
     - name: Cache Gradle Wrapper
-      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.1
+      uses: actions/cache@v4
       with:
         path: ~/.gradle/wrapper
         key: gradle-wrapper-${{ hashFiles('**/gradle-wrapper.properties') }}
