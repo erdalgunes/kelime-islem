@@ -16,24 +16,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log Event Details
+        env:
+          EVENT_JSON: ${{ toJSON(github.event) }}
         run: |
           echo "=== EVENT DEBUGGING ==="
           echo "Event Type: ${{ github.event_name }}"
           echo "Event Action: ${{ github.event.action }}"
-          echo "Comment User Login: '${{ github.event.comment.user.login }}'"
-          echo "Comment User Type: '${{ github.event.comment.user.type }}'"
-          echo "Comment Body (first 500 chars):"
-          echo '${{ github.event.comment.body }}' | head -c 500
-          echo ""
+          echo "Comment User Login: ${{ github.event.comment.user.login }}"
+          echo "Comment User Type: ${{ github.event.comment.user.type }}"
           echo "=== CONDITION TESTS ==="
-          echo "Username match (coderabbitai[bot]): ${{ github.event.comment.user.login == 'coderabbitai[bot]' }}"
-          echo "Contains ⚠️: ${{ contains(github.event.comment.body, '⚠️') }}"
-          echo "Contains 🔴: ${{ contains(github.event.comment.body, '🔴') }}"
-          echo "Contains 'Potential issue': ${{ contains(github.event.comment.body, 'Potential issue') }}"
-          echo "Contains 'Critical': ${{ contains(github.event.comment.body, 'Critical') }}"
-          echo "Contains 'Major': ${{ contains(github.event.comment.body, 'Major') }}"
+          echo "Username match: ${{ github.event.comment.user.login == 'coderabbitai[bot]' }}"
+          echo "Contains warning emoji: ${{ contains(github.event.comment.body, '⚠️') }}"
+          echo "Contains red circle: ${{ contains(github.event.comment.body, '🔴') }}"
+          echo "Contains Potential issue: ${{ contains(github.event.comment.body, 'Potential issue') }}"
+          echo "Contains Critical: ${{ contains(github.event.comment.body, 'Critical') }}"
+          echo "=== COMMENT BODY ==="
+          echo "First 500 chars of comment:"
+          echo "${{ github.event.comment.body }}" | head -c 500
+          echo ""
           echo "=== FULL PAYLOAD ==="
-          echo '${{ toJSON(github.event) }}'
+          echo "$EVENT_JSON"
 
   trigger-codegen:
     name: Auto-trigger Codegen for CodeRabbit Issues
