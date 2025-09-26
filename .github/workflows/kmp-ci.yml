@@ -35,21 +35,18 @@ jobs:
         gradle-cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
-    - name: Run detekt
-      run: ./gradlew detekt --continue
-
-    - name: Run ktlint check
-      run: ./gradlew ktlintCheck
+    - name: Run lint checks
+      run: ./gradlew lint --continue
       continue-on-error: true
 
-    - name: Upload detekt reports
+    - name: Upload lint reports
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: detekt-reports
+        name: lint-reports
         path: |
-          build/reports/detekt/
-          composeApp/build/reports/detekt/
+          build/reports/lint/
+          composeApp/build/reports/lint/
         retention-days: 7
 
   # ============================================
