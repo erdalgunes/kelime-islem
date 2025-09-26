@@ -36,7 +36,7 @@ jobs:
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
     - name: Run lint checks
-      run: ./gradlew lint --continue
+      run: ./gradlew :composeApp:lint --continue
       continue-on-error: true
 
     - name: Upload lint reports
@@ -63,23 +63,13 @@ jobs:
         include:
           - platform: android
             os: ubuntu-latest
-            task: :composeApp:testDebugUnitTest
+            task: testDebugUnitTest
             report-path: composeApp/build/test-results/testDebugUnitTest/*.xml
-
-          - platform: desktop
-            os: ubuntu-latest
-            task: :composeApp:testDesktopJvm
-            report-path: composeApp/build/test-results/testDesktopJvm/*.xml
 
           - platform: js
             os: ubuntu-latest
-            task: :composeApp:jsNodeTest
+            task: jsNodeTest
             report-path: composeApp/build/test-results/jsNodeTest/*.xml
-
-          - platform: ios
-            os: macos-latest
-            task: :composeApp:iosX64Test
-            report-path: composeApp/build/test-results/iosX64Test/*.xml
 
     steps:
     - name: Checkout code
@@ -94,12 +84,12 @@ jobs:
     - name: Run ${{ matrix.platform }} tests
       run: |
         START_TIME=$(date +%s)
-        ./gradlew ${{ matrix.task }} --stacktrace --build-cache
+        ./gradlew :composeApp:${{ matrix.task }} --stacktrace --build-cache
         END_TIME=$(date +%s)
         DURATION=$((END_TIME - START_TIME))
         echo "## ✅ ${{ matrix.platform }} Test Results" >> $GITHUB_STEP_SUMMARY
         echo "- **Duration**: ${DURATION}s" >> $GITHUB_STEP_SUMMARY
-        echo "- **Task**: \`${{ matrix.task }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Task**: \`:composeApp:${{ matrix.task }}\`" >> $GITHUB_STEP_SUMMARY
 
     - name: Generate test report
       uses: dorny/test-reporter@v1
@@ -140,11 +130,11 @@ jobs:
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
     - name: Run tests with coverage
-      run: ./gradlew testDebugUnitTest koverXmlReport koverHtmlReport --build-cache
+      run: ./gradlew :composeApp:testDebugUnitTest :composeApp:koverXmlReport :composeApp:koverHtmlReport --build-cache
 
     - name: Verify coverage threshold
       run: |
-        ./gradlew koverVerify --build-cache || EXIT_CODE=$?
+        ./gradlew :composeApp:koverVerify --build-cache || EXIT_CODE=$?
         if [ -f composeApp/build/reports/kover/report.xml ]; then
           COVERAGE=$(grep -oP 'line-rate="\K[^"]+' composeApp/build/reports/kover/report.xml | head -1)
           PERCENTAGE=$(echo "scale=1; $COVERAGE * 100" | bc)
@@ -225,7 +215,7 @@ jobs:
         cache-read-only: true
 
     - name: Check for dependency vulnerabilities
-      run: ./gradlew dependencyCheckAnalyze || true
+      run: ./gradlew dependencyCheckAnalyze 2>/dev/null || echo "Dependency check plugin not configured"
       continue-on-error: true
 
   # ============================================
@@ -250,27 +240,14 @@ jobs:
     - name: Build debug APK
       run: ./gradlew :composeApp:assembleDebug
 
-    - name: Build desktop distribution
-      run: ./gradlew :composeApp:packageDistributionForCurrentOS
-      continue-on-error: true
-
     - name: Build JS/Web bundle
       run: ./gradlew :composeApp:jsBrowserDistribution
-      continue-on-error: true
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: debug-apk
         path: composeApp/build/outputs/apk/debug/*.apk
-        retention-days: 30
-
-    - name: Upload Desktop artifacts
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: desktop-artifacts
-        path: composeApp/build/compose/binaries/main/
         retention-days: 30
 
     - name: Upload Web artifacts

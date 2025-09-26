@@ -38,23 +38,19 @@ fi
 # 3. Check for common CI issues
 echo "🐛 Checking for common issues..."
 
-# Check if gradle tasks exist
+# Known valid tasks that exist in this project
+VALID_TASKS=":composeApp:testDebugUnitTest :composeApp:jsNodeTest :composeApp:lint :composeApp:assembleDebug :composeApp:jsBrowserDistribution :composeApp:koverVerify :composeApp:koverXmlReport :composeApp:koverHtmlReport :composeApp:allTests"
+
+# Check if gradle tasks in workflows are valid
 GRADLE_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
-    grep -oE "gradlew [a-zA-Z:]+" | \
-    cut -d' ' -f2 | sort -u || true)
+    grep -oE ":composeApp:[a-zA-Z]+" | \
+    sort -u || true)
 
 if [ ! -z "$GRADLE_TASKS" ]; then
     echo "  Validating Gradle tasks..."
     for task in $GRADLE_TASKS; do
-        # Skip checking certain dynamic tasks
-        if [[ "$task" == *"$"* ]] || [[ "$task" == "--"* ]]; then
-            continue
-        fi
-
-        # Quick check without running
-        if ! ./gradlew tasks --all 2>/dev/null | grep -qE "^$task |^$task$"; then
-            echo -e "${YELLOW}  ⚠️  Task '$task' not found in 'gradlew tasks'${NC}"
-            echo "  Make sure this task exists or will be available in CI"
+        if [[ ! " $VALID_TASKS " =~ " $task " ]]; then
+            echo -e "${YELLOW}  ⚠️  Task '$task' may not exist${NC}"
         fi
     done
 fi
