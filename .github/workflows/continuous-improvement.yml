@@ -1,0 +1,286 @@
+name: Continuous Code Improvement
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      focus_area:
+        description: 'Area to focus improvements on'
+        required: false
+        type: choice
+        options:
+          - all
+          - performance
+          - security
+          - tests
+          - documentation
+          - tech-debt
+        default: 'all'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  analyze-and-improve:
+    name: Analyze Codebase & Generate Improvements
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Analyze codebase health
+        id: analyze
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { exec } = require('child_process');
+            const util = require('util');
+            const execAsync = util.promisify(exec);
+            const fs = require('fs').promises;
+
+            const improvements = [];
+            const focus = '${{ github.event.inputs.focus_area }}' || 'all';
+
+            console.log(`🔍 Analyzing codebase (focus: ${focus})...`);
+
+            // 1. Check test coverage
+            if (focus === 'all' || focus === 'tests') {
+              try {
+                const { stdout } = await execAsync('npm test -- --coverage --json');
+                const coverage = JSON.parse(stdout);
+                const totalCoverage = coverage.total?.lines?.pct || 0;
+
+                if (totalCoverage < 80) {
+                  improvements.push({
+                    type: 'test-coverage',
+                    priority: 'high',
+                    description: `Test coverage is ${totalCoverage}%, should be at least 80%`,
+                    files: coverage.uncoveredFiles || []
+                  });
+                }
+              } catch (e) {
+                console.log('Coverage check failed:', e.message);
+              }
+            }
+
+            // 2. Find TODO/FIXME comments
+            if (focus === 'all' || focus === 'tech-debt') {
+              try {
+                const { stdout } = await execAsync('grep -r "TODO\\|FIXME" --include="*.js" --include="*.ts" --include="*.jsx" --include="*.tsx" . || true');
+                const todos = stdout.split('\n').filter(line => line.trim());
+
+                if (todos.length > 0) {
+                  improvements.push({
+                    type: 'tech-debt',
+                    priority: 'medium',
+                    description: `Found ${todos.length} TODO/FIXME comments`,
+                    details: todos.slice(0, 10)
+                  });
+                }
+              } catch (e) {
+                console.log('TODO search failed:', e.message);
+              }
+            }
+
+            // 3. Check for outdated dependencies
+            if (focus === 'all' || focus === 'security') {
+              try {
+                const { stdout } = await execAsync('npm outdated --json || true');
+                if (stdout) {
+                  const outdated = JSON.parse(stdout);
+                  const criticalUpdates = Object.entries(outdated).filter(([pkg, info]) =>
+                    info.wanted !== info.latest
+                  );
+
+                  if (criticalUpdates.length > 0) {
+                    improvements.push({
+                      type: 'dependencies',
+                      priority: 'medium',
+                      description: `${criticalUpdates.length} packages have updates available`,
+                      packages: criticalUpdates.map(([pkg, info]) => ({
+                        name: pkg,
+                        current: info.current,
+                        latest: info.latest
+                      }))
+                    });
+                  }
+                }
+              } catch (e) {
+                console.log('Dependency check failed:', e.message);
+              }
+            }
+
+            // 4. Find complex functions (cyclomatic complexity)
+            if (focus === 'all' || focus === 'performance') {
+              try {
+                // Look for functions longer than 50 lines
+                const { stdout } = await execAsync(`find . -name "*.js" -o -name "*.ts" | xargs -I {} sh -c 'echo "File: {}" && awk "/function|const.*=.*\\(|class/ {start=NR} start && NR-start>50 {print \\"Long function at line \\" start; start=0}" {}' || true`);
+
+                const complexFunctions = stdout.split('\n').filter(line => line.includes('Long function'));
+
+                if (complexFunctions.length > 0) {
+                  improvements.push({
+                    type: 'complexity',
+                    priority: 'low',
+                    description: `Found ${complexFunctions.length} potentially complex functions`,
+                    details: complexFunctions.slice(0, 5)
+                  });
+                }
+              } catch (e) {
+                console.log('Complexity check failed:', e.message);
+              }
+            }
+
+            // 5. Check for missing documentation
+            if (focus === 'all' || focus === 'documentation') {
+              try {
+                // Find exported functions without JSDoc
+                const { stdout } = await execAsync(`grep -r "export.*function\\|export.*class" --include="*.js" --include="*.ts" . | wc -l || echo "0"`);
+                const exportCount = parseInt(stdout.trim());
+
+                const { stdout: docCount } = await execAsync(`grep -B2 "export.*function\\|export.*class" --include="*.js" --include="*.ts" . | grep "/\\*\\*" | wc -l || echo "0"`);
+                const documented = parseInt(docCount.trim());
+
+                if (exportCount > 0 && documented < exportCount * 0.5) {
+                  improvements.push({
+                    type: 'documentation',
+                    priority: 'low',
+                    description: `Only ${documented}/${exportCount} exported functions are documented`,
+                    coverage: (documented / exportCount * 100).toFixed(1) + '%'
+                  });
+                }
+              } catch (e) {
+                console.log('Documentation check failed:', e.message);
+              }
+            }
+
+            core.setOutput('improvements', JSON.stringify(improvements));
+            core.setOutput('count', improvements.length);
+
+            console.log(`Found ${improvements.length} improvement opportunities`);
+            return improvements;
+
+      - name: Create improvement PRs
+        if: steps.analyze.outputs.count > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const improvements = JSON.parse('${{ steps.analyze.outputs.improvements }}');
+
+            // Group by priority
+            const highPriority = improvements.filter(i => i.priority === 'high');
+            const mediumPriority = improvements.filter(i => i.priority === 'medium');
+
+            // Focus on high priority items first
+            const toFix = highPriority.length > 0 ? highPriority : mediumPriority.slice(0, 2);
+
+            if (toFix.length === 0) {
+              console.log('No critical improvements needed');
+              return;
+            }
+
+            for (const improvement of toFix) {
+              console.log(`📤 Dispatching ${improvement.type} improvement to Codegen.sh...`);
+
+              const prompt = generatePrompt(improvement);
+
+              try {
+                const response = await fetch('https://api.codegen.sh/v1/agents/spawn', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${{ secrets.CODEGEN_API_KEY }}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    repository: '${{ github.repository }}',
+                    prompt: prompt,
+                    improvement_type: improvement.type,
+                    agent_config: {
+                      model: 'claude-4-0-sonnet-20250805',
+                      tools: ['Read', 'Edit', 'Write', 'MultiEdit', 'Bash', 'Grep'],
+                      create_pr: true,
+                      pr_title: `chore: Improve ${improvement.type.replace('-', ' ')}`,
+                      pr_description: `Automated improvement:\n\n${improvement.description}`,
+                      branch_name: `improve/${improvement.type}-${Date.now()}`
+                    }
+                  })
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  console.log(`✅ Agent spawned for ${improvement.type}: ${data.agent_id}`);
+                }
+              } catch (error) {
+                console.error(`Failed to dispatch ${improvement.type}:`, error);
+              }
+            }
+
+            function generatePrompt(improvement) {
+              switch(improvement.type) {
+                case 'test-coverage':
+                  return `Improve test coverage from ${improvement.description}. Focus on uncovered files: ${improvement.files?.slice(0, 5).join(', ')}. Add comprehensive unit tests.`;
+
+                case 'tech-debt':
+                  return `Address technical debt: ${improvement.description}. Review and fix TODO/FIXME comments: ${improvement.details?.slice(0, 5).join('\n')}`;
+
+                case 'dependencies':
+                  return `Update outdated dependencies safely. Packages to update: ${improvement.packages?.map(p => `${p.name}: ${p.current} → ${p.latest}`).join(', ')}. Ensure all tests pass after updates.`;
+
+                case 'complexity':
+                  return `Refactor complex functions to improve maintainability. ${improvement.description}. Split large functions, extract methods, improve readability.`;
+
+                case 'documentation':
+                  return `Improve code documentation. ${improvement.description}. Add JSDoc comments to exported functions and classes.`;
+
+                default:
+                  return `Improve ${improvement.type}: ${improvement.description}`;
+              }
+            }
+
+      - name: Create improvement tracking issue
+        if: steps.analyze.outputs.count > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const improvements = JSON.parse('${{ steps.analyze.outputs.improvements }}');
+
+            const body = `## 📊 Codebase Health Report\n\n` +
+              `Date: ${new Date().toISOString().split('T')[0]}\n` +
+              `Focus Area: ${{ github.event.inputs.focus_area || 'all' }}\n\n` +
+              `### Improvement Opportunities Found: ${improvements.length}\n\n` +
+              improvements.map(imp => {
+                const emoji = {
+                  high: '🔴',
+                  medium: '🟠',
+                  low: '🟡'
+                }[imp.priority] || '⚪';
+
+                return `${emoji} **${imp.type}** (${imp.priority} priority)\n` +
+                       `   ${imp.description}\n`;
+              }).join('\n') +
+              `\n### Status\n` +
+              `Codegen.sh agents are working on high-priority improvements.\n` +
+              `PRs will be created automatically for review.\n\n` +
+              `---\n` +
+              `*Next scan: Tomorrow at 2 AM UTC*`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `📊 Daily Code Health Report - ${new Date().toISOString().split('T')[0]}`,
+              body: body,
+              labels: ['continuous-improvement', 'automated']
+            });
