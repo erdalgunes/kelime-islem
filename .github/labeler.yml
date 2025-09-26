@@ -1,0 +1,116 @@
+# Configuration for actions/labeler
+# This file defines path-based automatic labeling rules
+
+# Architecture review needed for core system changes
+needs/architecture-review:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'composeApp/src/commonMain/kotlin/com/kelimeislem/core/**'
+      - 'composeApp/src/commonMain/kotlin/com/kelimeislem/domain/**'
+      - 'composeApp/src/commonMain/kotlin/com/kelimeislem/infrastructure/**'
+      - '**/Application.kt'
+      - '**/AppModule.kt'
+      - '**/DI/**'
+
+# Performance review needed for critical components
+needs/performance-review:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'composeApp/src/commonMain/kotlin/com/kelimeislem/utils/PerformanceMonitor.kt'
+      - '**/*Cache*.kt'
+      - '**/*Repository*.kt'
+      - '**/*Query*.kt'
+      - '**/*Index*.kt'
+      - '**/data/local/**'
+
+# Security review needed for auth and sensitive code
+needs/security-review:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/auth/**'
+      - '**/crypto/**'
+      - '**/security/**'
+      - '**/*Token*.kt'
+      - '**/*Permission*.kt'
+      - '**/*Auth*.kt'
+      - '**/*Encrypt*.kt'
+      - '.github/workflows/**'
+
+# Database review needed for schema changes
+needs/database-review:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.sql'
+      - '**/migrations/**'
+      - '**/*Schema*.kt'
+      - '**/*Database*.kt'
+      - '**/*Entity.kt'
+      - '**/data/database/**'
+
+# KMP review needed for multiplatform code
+needs/kmp-review:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'composeApp/src/commonMain/**'
+      - 'composeApp/src/androidMain/**'
+      - 'composeApp/src/jsMain/**'
+      - 'composeApp/src/iosMain/**'
+      - 'composeApp/src/desktopMain/**'
+      - 'composeApp/build.gradle.kts'
+      - 'gradle/libs.versions.toml'
+
+# UI review needed for interface changes
+needs/ui-review:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/ui/**'
+      - '**/*Composable*.kt'
+      - '**/*Theme*.kt'
+      - '**/*Color*.kt'
+      - '**/*Style*.kt'
+      - '**/*.xml'
+      - '**/presentation/**'
+      - '**/resources/**'
+      - 'design-system/**'
+
+# Test review needed for test changes
+needs/test-review:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*Test.kt'
+      - '**/*Test.java'
+      - '**/test/**'
+      - '**/androidTest/**'
+      - '**/commonTest/**'
+      - '**/jsTest/**'
+      - '**/*.test.*'
+
+# Documentation changes
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.md'
+      - 'docs/**'
+      - '**/README*'
+      - 'LICENSE*'
+
+# CI/CD changes
+ci:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - 'scripts/**'
+      - '.github/labeler.yml'
+      - '.github/pr-labeler.yml'
+
+# Dependency updates
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'gradle/libs.versions.toml'
+      - '**/build.gradle.kts'
+      - 'gradle.properties'
+      - 'settings.gradle.kts'
+      - 'package.json'
+      - 'package-lock.json'
