@@ -60,6 +60,7 @@ jobs:
       - name: Trigger Codegen
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const comment = context.payload.comment.body;
             const commentUrl = context.payload.comment.html_url;
@@ -89,6 +90,7 @@ jobs:
       - name: React to CodeRabbit comment
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             await github.rest.reactions.createForIssueComment({
               owner: context.repo.owner,
