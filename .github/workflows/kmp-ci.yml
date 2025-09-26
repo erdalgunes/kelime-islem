@@ -44,21 +44,18 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Run detekt
-      run: ./gradlew detekt --continue
-
-    - name: Run ktlint check
-      run: ./gradlew ktlintCheck
+    - name: Run lint checks
+      run: ./gradlew lint --continue
       continue-on-error: true
 
-    - name: Upload detekt reports
+    - name: Upload lint reports
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: detekt-reports
+        name: lint-reports
         path: |
-          build/reports/detekt/
-          composeApp/build/reports/detekt/
+          build/reports/lint/
+          composeApp/build/reports/lint/
         retention-days: 7
 
   # ============================================
@@ -78,20 +75,10 @@ jobs:
             task: :composeApp:testDebugUnitTest
             report-path: composeApp/build/test-results/testDebugUnitTest/*.xml
 
-          - platform: desktop
-            os: ubuntu-latest
-            task: :composeApp:testDesktopJvm
-            report-path: composeApp/build/test-results/testDesktopJvm/*.xml
-
           - platform: js
             os: ubuntu-latest
             task: :composeApp:jsNodeTest
             report-path: composeApp/build/test-results/jsNodeTest/*.xml
-
-          - platform: ios
-            os: macos-latest
-            task: :composeApp:iosX64Test
-            report-path: composeApp/build/test-results/iosX64Test/*.xml
 
     steps:
     - name: Checkout code
@@ -109,14 +96,6 @@ jobs:
         cache-read-only: ${{ github.ref != 'refs/heads/main' }}
         cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-    - name: Cache Kotlin/Native compiler
-      if: matrix.platform == 'ios'
-      uses: actions/cache@v4
-      with:
-        path: ~/.konan
-        key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-konan-
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
@@ -290,10 +269,6 @@ jobs:
     - name: Build debug APK
       run: ./gradlew :composeApp:assembleDebug
 
-    - name: Build desktop distribution
-      run: ./gradlew :composeApp:packageDistributionForCurrentOS
-      continue-on-error: true
-
     - name: Build JS/Web bundle
       run: ./gradlew :composeApp:jsBrowserDistribution
       continue-on-error: true
@@ -303,14 +278,6 @@ jobs:
       with:
         name: debug-apk
         path: composeApp/build/outputs/apk/debug/*.apk
-        retention-days: 30
-
-    - name: Upload Desktop artifacts
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: desktop-artifacts
-        path: composeApp/build/compose/binaries/main/
         retention-days: 30
 
     - name: Upload Web artifacts

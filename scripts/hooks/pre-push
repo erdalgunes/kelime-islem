@@ -1,0 +1,141 @@
+#!/bin/bash
+# Comprehensive pre-push hook for Kelime İşlem
+# Full CI simulation before push to catch all failures
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}🚀 Running pre-push CI validation...${NC}"
+
+# Function to check if a Gradle task exists
+check_gradle_task() {
+    local task=$1
+    if ! ./gradlew tasks --all 2>/dev/null | grep -q "^$task "; then
+        echo -e "${RED}❌ Gradle task '$task' not found!${NC}"
+        return 1
+    fi
+    return 0
+}
+
+# 1. Validate workflow YAML syntax
+echo -e "${YELLOW}📝 Validating workflow YAML syntax...${NC}"
+for workflow in .github/workflows/*.yml; do
+    if [ -f "$workflow" ]; then
+        if ! python3 -c "import yaml; yaml.safe_load(open('$workflow'))" 2>/dev/null; then
+            echo -e "${RED}❌ Invalid YAML in $workflow${NC}"
+            exit 1
+        fi
+    fi
+done
+
+# 2. Validate GitHub Action versions (if script exists)
+if [ -f scripts/validate-action-versions.sh ]; then
+    echo -e "${YELLOW}🔖 Checking GitHub Action versions...${NC}"
+    if ! ./scripts/validate-action-versions.sh; then
+        echo -e "${RED}❌ GitHub Action version validation failed!${NC}"
+        exit 1
+    fi
+fi
+
+# 3. Extract and validate all Gradle tasks from workflows
+echo -e "${YELLOW}🔨 Validating Gradle tasks in workflows...${NC}"
+WORKFLOW_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
+    grep -oE "gradlew\s+[a-zA-Z:]+(\s|$)" | \
+    sed 's/gradlew\s*//' | \
+    sed 's/\s*$//' | \
+    tr -d '\r' | \
+    sort -u || true)
+
+INVALID_TASKS=""
+for task in $WORKFLOW_TASKS; do
+    # Skip flags and options
+    if [[ "$task" == --* ]] || [[ "$task" == -* ]]; then
+        continue
+    fi
+
+    echo -n "  Checking task: $task... "
+    if check_gradle_task "$task" 2>/dev/null; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗${NC}"
+        INVALID_TASKS="$INVALID_TASKS $task"
+    fi
+done
+
+if [ -n "$INVALID_TASKS" ]; then
+    echo -e "${RED}❌ Invalid Gradle tasks found in workflows:${NC}"
+    echo "  $INVALID_TASKS"
+    echo "  Fix these in your workflow files before pushing!"
+    exit 1
+fi
+
+# 4. Check for unsupported platform references
+echo -e "${YELLOW}🎯 Checking for unsupported platforms...${NC}"
+UNSUPPORTED_PATTERNS="testDesktopJvm|iosX64Test|iosSimulatorArm64Test|packageDistributionForCurrentOS"
+if grep -rE "$UNSUPPORTED_PATTERNS" .github/workflows/ --include="*.yml" > /dev/null 2>&1; then
+    echo -e "${RED}❌ Found references to unsupported platforms in workflows!${NC}"
+    echo "  This project only supports Android and JS/Web."
+    exit 1
+fi
+
+# 5. Run basic lint check
+echo -e "${YELLOW}🔍 Running lint check...${NC}"
+if check_gradle_task "lint" 2>/dev/null; then
+    if ! ./gradlew lint --continue > /dev/null 2>&1; then
+        echo -e "${YELLOW}⚠️  Lint check had warnings (non-blocking)${NC}"
+    fi
+else
+    echo -e "${YELLOW}  Skipping: lint task not available${NC}"
+fi
+
+# 6. Run quick tests (Android unit tests only for speed)
+echo -e "${YELLOW}🧪 Running Android unit tests...${NC}"
+if check_gradle_task ":composeApp:testDebugUnitTest" 2>/dev/null; then
+    if ! ./gradlew :composeApp:testDebugUnitTest --continue > /dev/null 2>&1; then
+        echo -e "${RED}❌ Android unit tests failed!${NC}"
+        echo "  Run './gradlew :composeApp:testDebugUnitTest' to see details"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}  Skipping: test task not available${NC}"
+fi
+
+# 7. Validate that required files exist
+echo -e "${YELLOW}📁 Checking required files...${NC}"
+REQUIRED_FILES=(
+    ".github/workflows/kmp-ci.yml"
+    "gradlew"
+    "settings.gradle.kts"
+)
+
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        echo -e "${RED}❌ Required file missing: $file${NC}"
+        exit 1
+    fi
+done
+
+# 8. Check for merge conflicts
+if grep -r "^<<<<<<<\|^=======$\|^>>>>>>>" . --exclude-dir=.git > /dev/null 2>&1; then
+    echo -e "${RED}❌ Merge conflict markers found!${NC}"
+    echo "  Resolve conflicts before pushing"
+    exit 1
+fi
+
+# 9. Check commit messages (last 5 commits not in origin)
+echo -e "${YELLOW}💬 Checking commit messages...${NC}"
+COMMITS=$(git log origin/$(git rev-parse --abbrev-ref HEAD)..HEAD --oneline 2>/dev/null || git log -5 --oneline)
+if echo "$COMMITS" | grep -E "^[a-f0-9]+ (WIP|wip|temp|TEMP)" > /dev/null; then
+    echo -e "${YELLOW}⚠️  Warning: Found WIP/temp commits${NC}"
+fi
+
+# Success!
+echo -e "${GREEN}✅ Pre-push validation passed!${NC}"
+echo "  Your changes are ready to push to GitHub."
+exit 0
