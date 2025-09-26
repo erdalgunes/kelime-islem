@@ -136,6 +136,16 @@ To check code coverage:
 ./gradlew :composeApp:koverVerify
 ```
 
+## GitHub Apps Integration
+
+This project uses GitHub Apps for automated code review and dependency management:
+
+- **CodeRabbit**: Automatically reviews PRs with AI-powered suggestions
+- **Claude**: Responds to @claude mentions in issues and PRs
+- **Renovate**: Manages dependency updates via `renovate.json` configuration
+
+Note: Redundant workflow files have been moved to `.github/disabled-workflows/` to avoid duplication with the GitHub Apps.
+
 ## Contributing
 
 When modifying workflows:
