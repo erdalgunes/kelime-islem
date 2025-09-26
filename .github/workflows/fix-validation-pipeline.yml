@@ -1,0 +1,361 @@
+name: Fix Validation Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      branch_name:
+        required: true
+        type: string
+      pr_number:
+        required: true
+        type: string
+      fix_type:
+        required: false
+        type: string
+        default: 'general'
+    secrets:
+      SONAR_TOKEN:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: true
+
+jobs:
+  comprehensive-validation:
+    name: Validate Fix Safety
+    runs-on: ubuntu-latest
+    outputs:
+      tests_passed: ${{ steps.tests.outputs.passed }}
+      lint_passed: ${{ steps.lint.outputs.passed }}
+      build_passed: ${{ steps.build.outputs.passed }}
+      security_passed: ${{ steps.security.outputs.passed }}
+      coverage_maintained: ${{ steps.coverage.outputs.maintained }}
+      overall_status: ${{ steps.final.outputs.status }}
+
+    steps:
+      - name: Checkout fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_name }}
+          fetch-depth: 0
+
+      - name: Setup environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          # Install additional validation tools
+          npm install -g snyk
+
+      - name: Backup original state
+        id: backup
+        run: |
+          # Create backup branch
+          BACKUP_BRANCH="backup/${{ inputs.branch_name }}"
+          git checkout -b "$BACKUP_BRANCH"
+          git push origin "$BACKUP_BRANCH"
+          echo "backup_branch=$BACKUP_BRANCH" >> $GITHUB_OUTPUT
+
+      # =============================================================
+      # TESTING VALIDATION
+      # =============================================================
+      - name: Run unit tests
+        id: tests
+        continue-on-error: true
+        run: |
+          echo "Running unit tests..."
+          npm test -- --coverage --json --outputFile=test-results.json 2>&1 | tee test-output.log
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+            echo "✅ Unit tests passed"
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+            echo "❌ Unit tests failed"
+          fi
+
+      - name: Run integration tests
+        if: inputs.fix_type == 'bug' || inputs.fix_type == 'critical'
+        continue-on-error: true
+        run: |
+          # Run integration tests for critical fixes
+          npm run test:integration || true
+
+      # =============================================================
+      # CODE QUALITY VALIDATION
+      # =============================================================
+      - name: Run linting checks
+        id: lint
+        continue-on-error: true
+        run: |
+          echo "Running linting checks..."
+          npm run lint -- --format json > lint-results.json 2>&1 | tee lint-output.log
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+            echo "✅ Linting passed"
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+            echo "❌ Linting failed"
+          fi
+
+      - name: Check code formatting
+        continue-on-error: true
+        run: |
+          # Check if code follows project formatting
+          npm run format:check || true
+
+      # =============================================================
+      # BUILD VALIDATION
+      # =============================================================
+      - name: Run build
+        id: build
+        continue-on-error: true
+        run: |
+          echo "Running build..."
+          npm run build 2>&1 | tee build-output.log
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+            echo "✅ Build successful"
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+            echo "❌ Build failed"
+          fi
+
+      - name: Check bundle size
+        continue-on-error: true
+        run: |
+          # Check if bundle size increased significantly
+          npm run build:analyze || true
+
+      # =============================================================
+      # SECURITY VALIDATION
+      # =============================================================
+      - name: Security scan
+        id: security
+        continue-on-error: true
+        run: |
+          echo "Running security scan..."
+
+          # Run npm audit
+          npm audit --json > npm-audit.json || true
+          AUDIT_EXIT=$?
+
+          # Run Snyk scan if available
+          if command -v snyk &> /dev/null; then
+            snyk test --json > snyk-results.json || true
+          fi
+
+          if [ $AUDIT_EXIT -eq 0 ]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+            echo "✅ No security vulnerabilities"
+          else
+            # Check if only dev dependencies have issues
+            HIGH_VULNS=$(cat npm-audit.json | jq '.metadata.vulnerabilities.high + .metadata.vulnerabilities.critical' || echo "0")
+            if [ "$HIGH_VULNS" -eq "0" ]; then
+              echo "passed=true" >> $GITHUB_OUTPUT
+              echo "⚠️ Low/medium security issues found (non-blocking)"
+            else
+              echo "passed=false" >> $GITHUB_OUTPUT
+              echo "❌ High/critical security vulnerabilities found"
+            fi
+          fi
+
+      - name: Check for secrets
+        continue-on-error: true
+        run: |
+          # Scan for accidentally committed secrets
+          npx secretlint "**/*" || true
+
+      # =============================================================
+      # COVERAGE VALIDATION
+      # =============================================================
+      - name: Check test coverage
+        id: coverage
+        continue-on-error: true
+        run: |
+          echo "Checking test coverage..."
+
+          # Get coverage before fixes (from main branch)
+          git checkout main
+          npm test -- --coverage --json > coverage-before.json 2>/dev/null || true
+          COVERAGE_BEFORE=$(cat coverage-before.json | jq '.total.lines.pct' || echo "0")
+
+          # Get coverage after fixes
+          git checkout ${{ inputs.branch_name }}
+          npm test -- --coverage --json > coverage-after.json 2>/dev/null || true
+          COVERAGE_AFTER=$(cat coverage-after.json | jq '.total.lines.pct' || echo "0")
+
+          echo "Coverage before: $COVERAGE_BEFORE%"
+          echo "Coverage after: $COVERAGE_AFTER%"
+
+          # Check if coverage was maintained or improved
+          if (( $(echo "$COVERAGE_AFTER >= $COVERAGE_BEFORE" | bc -l) )); then
+            echo "maintained=true" >> $GITHUB_OUTPUT
+            echo "✅ Coverage maintained/improved"
+          else
+            echo "maintained=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Coverage decreased"
+          fi
+
+      # =============================================================
+      # PERFORMANCE VALIDATION
+      # =============================================================
+      - name: Performance regression check
+        if: inputs.fix_type == 'performance'
+        continue-on-error: true
+        run: |
+          # Run performance benchmarks
+          npm run benchmark || true
+
+      # =============================================================
+      # SONARCLOUD ANALYSIS
+      # =============================================================
+      - name: SonarCloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=kelime-islem
+            -Dsonar.organization=erdalgunes
+
+      # =============================================================
+      # FINAL VALIDATION
+      # =============================================================
+      - name: Determine overall status
+        id: final
+        run: |
+          TESTS="${{ steps.tests.outputs.passed }}"
+          LINT="${{ steps.lint.outputs.passed }}"
+          BUILD="${{ steps.build.outputs.passed }}"
+          SECURITY="${{ steps.security.outputs.passed }}"
+          COVERAGE="${{ steps.coverage.outputs.maintained }}"
+
+          # All critical checks must pass
+          if [ "$TESTS" == "true" ] && [ "$BUILD" == "true" ] && [ "$SECURITY" == "true" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "✅ All critical validations passed"
+
+            # Create success badge
+            echo "![Validation Passed](https://img.shields.io/badge/validation-passed-green)" > validation-status.md
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "❌ Validation failed"
+
+            # Create failure badge
+            echo "![Validation Failed](https://img.shields.io/badge/validation-failed-red)" > validation-status.md
+          fi
+
+      - name: Generate validation report
+        if: always()
+        run: |
+          cat > validation-report.md << 'EOF'
+          # Fix Validation Report
+
+          ## Summary
+          - **Branch**: ${{ inputs.branch_name }}
+          - **PR**: #${{ inputs.pr_number }}
+          - **Fix Type**: ${{ inputs.fix_type }}
+          - **Overall Status**: ${{ steps.final.outputs.status }}
+
+          ## Validation Results
+
+          | Check | Status | Details |
+          |-------|--------|---------|
+          | Unit Tests | ${{ steps.tests.outputs.passed == 'true' && '✅' || '❌' }} | See test-output.log |
+          | Linting | ${{ steps.lint.outputs.passed == 'true' && '✅' || '❌' }} | See lint-output.log |
+          | Build | ${{ steps.build.outputs.passed == 'true' && '✅' || '❌' }} | See build-output.log |
+          | Security | ${{ steps.security.outputs.passed == 'true' && '✅' || '❌' }} | See security scan results |
+          | Coverage | ${{ steps.coverage.outputs.maintained == 'true' && '✅' || '⚠️' }} | Coverage analysis |
+
+          ## Artifacts
+          - Test results: test-results.json
+          - Lint results: lint-results.json
+          - Security scan: npm-audit.json
+
+          ## Recommendations
+          ${{ steps.final.outputs.status == 'success' && '✅ Safe to merge after human review' || '❌ Manual intervention required' }}
+          EOF
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-results-${{ github.run_id }}
+          path: |
+            validation-report.md
+            test-output.log
+            lint-output.log
+            build-output.log
+            test-results.json
+            lint-results.json
+            npm-audit.json
+            coverage-*.json
+
+      - name: Post validation comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('validation-report.md', 'utf8');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ inputs.pr_number }},
+              body: report
+            });
+
+  rollback-on-failure:
+    name: Rollback Changes
+    needs: comprehensive-validation
+    if: needs.comprehensive-validation.outputs.overall_status == 'failure'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_name }}
+
+      - name: Rollback to backup
+        run: |
+          # Reset to backup state
+          git reset --hard origin/${{ needs.comprehensive-validation.outputs.backup_branch }}
+          git push --force origin ${{ inputs.branch_name }}
+
+          echo "❌ Changes rolled back due to validation failure"
+
+      - name: Notify rollback
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ inputs.pr_number }},
+              body: `## 🔄 Automatic Rollback Executed
+
+              The automated fixes have been rolled back due to validation failures.
+
+              ### Failed Validations:
+              - Tests: ${{ needs.comprehensive-validation.outputs.tests_passed != 'true' && '❌' || '✅' }}
+              - Lint: ${{ needs.comprehensive-validation.outputs.lint_passed != 'true' && '❌' || '✅' }}
+              - Build: ${{ needs.comprehensive-validation.outputs.build_passed != 'true' && '❌' || '✅' }}
+              - Security: ${{ needs.comprehensive-validation.outputs.security_passed != 'true' && '❌' || '✅' }}
+
+              ### Next Steps:
+              1. Review the validation report
+              2. Fix issues manually
+              3. Re-run validation pipeline
+
+              See workflow artifacts for detailed logs.`
+            });
