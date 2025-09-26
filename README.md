@@ -171,3 +171,4 @@ Copyright 2025 Bir Kelime Bir İşlem Project
 Licensed under the Apache License, Version 2.0# CI/CD Status
 
 GitHub Actions now running on public repository for free CI/CD.
+# Trigger CI
