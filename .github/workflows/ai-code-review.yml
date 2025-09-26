@@ -45,7 +45,6 @@ jobs:
       issues: write
       id-token: write
       actions: read
-      metadata: read
       repository-projects: read
 
     steps:

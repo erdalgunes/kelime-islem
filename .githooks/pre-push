@@ -1,0 +1,80 @@
+#!/bin/bash
+# Pre-push hook to validate CI/CD configuration before pushing
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo "🔍 Running pre-push CI validation..."
+
+# 1. Check workflow YAML syntax
+echo "📝 Validating workflow YAML syntax..."
+for workflow in .github/workflows/*.yml; do
+    if [ -f "$workflow" ]; then
+        if ! python3 -c "import yaml; yaml.safe_load(open('$workflow'))" 2>/dev/null; then
+            echo -e "${RED}❌ Invalid YAML in $workflow${NC}"
+            echo "Fix the YAML syntax before pushing!"
+            exit 1
+        fi
+    fi
+done
+
+# 2. Validate GitHub Actions versions
+echo "🔖 Checking GitHub Actions versions..."
+INVALID_SHAS=$(grep -h "uses:" .github/workflows/*.yml .github/actions/*/action.yml 2>/dev/null | \
+    grep -E "@[a-f0-9]{40}" | \
+    grep -v "#" || true)
+
+if [ ! -z "$INVALID_SHAS" ]; then
+    echo -e "${YELLOW}⚠️  Found SHA-pinned actions without comments:${NC}"
+    echo "$INVALID_SHAS"
+    echo "Consider adding version comments for maintainability"
+fi
+
+# 3. Check for common CI issues
+echo "🐛 Checking for common issues..."
+
+# Check if gradle tasks exist
+GRADLE_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
+    grep -oE "gradlew [a-zA-Z:]+" | \
+    cut -d' ' -f2 | sort -u || true)
+
+if [ ! -z "$GRADLE_TASKS" ]; then
+    echo "  Validating Gradle tasks..."
+    for task in $GRADLE_TASKS; do
+        # Skip checking certain dynamic tasks
+        if [[ "$task" == *"$"* ]] || [[ "$task" == "--"* ]]; then
+            continue
+        fi
+
+        # Quick check without running
+        if ! ./gradlew tasks --all 2>/dev/null | grep -qE "^$task |^$task$"; then
+            echo -e "${YELLOW}  ⚠️  Task '$task' not found in 'gradlew tasks'${NC}"
+            echo "  Make sure this task exists or will be available in CI"
+        fi
+    done
+fi
+
+# 4. Run act dry-run if available
+if command -v act &> /dev/null; then
+    echo "🎬 Running act dry-run..."
+    if ! act -n pull_request --job lint-and-analysis > /dev/null 2>&1; then
+        echo -e "${YELLOW}⚠️  act dry-run found potential issues${NC}"
+        echo "Run 'act -n pull_request' to see details"
+    fi
+else
+    echo -e "${YELLOW}ℹ️  Install 'act' for local CI testing: brew install act${NC}"
+fi
+
+echo -e "${GREEN}✅ Pre-push CI validation passed!${NC}"
+
+# Run existing pre-push hook if it exists
+if [ -f .git/hooks/pre-push.bak ]; then
+    .git/hooks/pre-push.bak "$@"
+fi
+
+exit 0
