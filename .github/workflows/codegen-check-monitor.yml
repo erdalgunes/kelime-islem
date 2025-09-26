@@ -13,11 +13,9 @@ jobs:
     # Only trigger when there's a failure AND there are associated pull requests
     if: |
       (github.event.check_suite.conclusion == 'failure' && 
-       github.event.check_suite.pull_requests && 
-       length(github.event.check_suite.pull_requests) > 0) ||
+       github.event.check_suite.pull_requests) ||
       (github.event.workflow_run.conclusion == 'failure' && 
-       github.event.workflow_run.pull_requests && 
-       length(github.event.workflow_run.pull_requests) > 0)
+       github.event.workflow_run.pull_requests)
     
     steps:
       - name: Check failure context
@@ -28,11 +26,11 @@ jobs:
           if [[ "${{ github.event_name }}" == "check_suite" ]]; then
             echo "Check suite ID: ${{ github.event.check_suite.id }}"
             echo "Check suite conclusion: ${{ github.event.check_suite.conclusion }}"
-            echo "Associated PRs count: ${{ length(github.event.check_suite.pull_requests) }}"
+            echo "Associated PRs: ${{ toJSON(github.event.check_suite.pull_requests) }}"
           elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "Workflow run ID: ${{ github.event.workflow_run.id }}"
             echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
-            echo "Associated PRs count: ${{ length(github.event.workflow_run.pull_requests) }}"
+            echo "Associated PRs: ${{ toJSON(github.event.workflow_run.pull_requests) }}"
           fi
 
       - name: Extract PR information
