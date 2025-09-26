@@ -1,0 +1,63 @@
+name: Codegen Check Monitor
+
+on:
+  check_suite:
+    types: [completed]
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+
+jobs:
+  monitor-failures:
+    runs-on: ubuntu-latest
+    # Only trigger when there's a failure AND there are associated pull requests
+    if: |
+      (github.event.check_suite.conclusion == 'failure' && 
+       github.event.check_suite.pull_requests && 
+       length(github.event.check_suite.pull_requests) > 0) ||
+      (github.event.workflow_run.conclusion == 'failure' && 
+       github.event.workflow_run.pull_requests && 
+       length(github.event.workflow_run.pull_requests) > 0)
+    
+    steps:
+      - name: Check failure context
+        run: |
+          echo "Detected failure in check suite or workflow run"
+          echo "Event name: ${{ github.event_name }}"
+          
+          if [[ "${{ github.event_name }}" == "check_suite" ]]; then
+            echo "Check suite ID: ${{ github.event.check_suite.id }}"
+            echo "Check suite conclusion: ${{ github.event.check_suite.conclusion }}"
+            echo "Associated PRs count: ${{ length(github.event.check_suite.pull_requests) }}"
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "Workflow run ID: ${{ github.event.workflow_run.id }}"
+            echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+            echo "Associated PRs count: ${{ length(github.event.workflow_run.pull_requests) }}"
+          fi
+
+      - name: Extract PR information
+        id: pr-info
+        run: |
+          if [[ "${{ github.event_name }}" == "check_suite" ]]; then
+            PR_NUMBERS=$(echo '${{ toJSON(github.event.check_suite.pull_requests) }}' | jq -r '.[].number' | tr '\n' ',')
+            echo "pr_numbers=${PR_NUMBERS%,}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            PR_NUMBERS=$(echo '${{ toJSON(github.event.workflow_run.pull_requests) }}' | jq -r '.[].number' | tr '\n' ',')
+            echo "pr_numbers=${PR_NUMBERS%,}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger codegen fix for failing checks
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: codegen-fix-request
+          client-payload: |
+            {
+              "event_name": "${{ github.event_name }}",
+              "pr_numbers": "${{ steps.pr-info.outputs.pr_numbers }}",
+              "failure_context": {
+                "check_suite_id": "${{ github.event.check_suite.id || '' }}",
+                "workflow_run_id": "${{ github.event.workflow_run.id || '' }}",
+                "conclusion": "${{ github.event.check_suite.conclusion || github.event.workflow_run.conclusion }}"
+              }
+            }
