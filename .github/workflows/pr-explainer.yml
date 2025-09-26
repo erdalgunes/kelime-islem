@@ -281,9 +281,8 @@ jobs:
 
       - name: Create or update explanation comment
         if: steps.analyze.outputs.pr_number
-        uses: peter-evans/create-or-update-comment@v5
+        uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ steps.analyze.outputs.pr_number }}
           body: ${{ steps.analyze.outputs.comment_body }}
           edit-mode: replace
-          comment-id: pr-label-explainer
