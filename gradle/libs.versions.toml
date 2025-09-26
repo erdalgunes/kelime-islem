@@ -11,31 +11,31 @@ mockk = "1.13.12"
 turbine = "1.2.0"
 kover = "0.8.3"
 robolectric = "4.13"
-androidxTest = "1.6.1"
-androidxTestExt = "1.2.1"
-espresso = "3.6.1"
+androidxTest = "1.7.0"
+androidxTestExt = "1.3.0"
+espresso = "3.7.0"
 
 # Android
-androidGradlePlugin = "8.12.2"
-androidTools = "31.12.2"
+androidGradlePlugin = "8.13.0"
+androidTools = "31.13.0"
 androidMinSdk = "24"
 androidCompileSdk = "35"
 androidTargetSdk = "35"
 
 # Compose Multiplatform
 compose = "1.8.0"
-composeBom = "2025.08.01"
+composeBom = "2025.09.01"
 composeMaterialIcons = "1.7.8"
-composeActivity = "1.9.3"
-composeNavigation = "2.8.5"
-composeLifecycle = "2.8.7"
+composeActivity = "1.11.0"
+composeNavigation = "2.9.5"
+composeLifecycle = "2.9.4"
 
 # Networking & Serialization
 ktor = "3.0.2"
 okhttp = "4.12.0"
 
 # Database
-room = "2.7.2"
+room = "2.8.1"
 sqldelight = "2.0.2"
 
 # Dependency Injection
