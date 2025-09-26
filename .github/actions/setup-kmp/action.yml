@@ -1,0 +1,70 @@
+name: 'Setup KMP Environment'
+description: 'Setup Kotlin Multiplatform development environment with optimized caching'
+author: 'Kelime İşlem Team'
+
+inputs:
+  java-version:
+    description: 'Java version to use'
+    required: false
+    default: '17'
+
+  gradle-cache-encryption-key:
+    description: 'Encryption key for Gradle cache'
+    required: false
+    default: ''
+
+  cache-read-only:
+    description: 'Whether cache should be read-only'
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up JDK
+      uses: actions/setup-java@692bdcaf206e66d57e3de60f14ecfc5f7729a9dc # v4.5.0
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    - name: Setup Gradle with enhanced caching
+      uses: gradle/actions/setup-gradle@ec92e829475ac0c2315ea8f9eced72db85bb337a # v4.0.0
+      with:
+        gradle-home-cache-cleanup: true
+        cache-encryption-key: ${{ inputs.gradle-cache-encryption-key }}
+        cache-read-only: ${{ inputs.cache-read-only }}
+        cache-write-only: false
+        generate-job-summary: true
+        dependency-graph: generate-and-submit
+
+    - name: Cache Kotlin/Native compiler
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.1
+      with:
+        path: ~/.konan
+        key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-konan-
+
+    - name: Cache Gradle Wrapper
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.1
+      with:
+        path: ~/.gradle/wrapper
+        key: gradle-wrapper-${{ hashFiles('**/gradle-wrapper.properties') }}
+        restore-keys: |
+          gradle-wrapper-
+
+    - name: Grant execute permission for gradlew
+      shell: bash
+      run: chmod +x gradlew
+
+    - name: Validate Gradle Wrapper
+      shell: bash
+      run: ./gradlew --version
+
+    - name: Set up environment variables
+      shell: bash
+      run: |
+        echo "GRADLE_OPTS=-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true" >> $GITHUB_ENV
+        echo "KOTLIN_COMPILER_EXECUTION_STRATEGY=in-process" >> $GITHUB_ENV
+        echo "Branch type detected: ${GITHUB_REF_NAME}" >> $GITHUB_STEP_SUMMARY
