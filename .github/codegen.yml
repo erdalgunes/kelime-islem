@@ -1,0 +1,119 @@
+# Codegen.sh Configuration
+# This file configures how Codegen.sh spawns Claude Code agents for auto-fixes
+
+version: 1
+
+# Agent configuration for different issue types
+agents:
+  ci-failure:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.2
+    tools:
+      - Read
+      - Edit
+      - Write
+      - Bash
+      - Grep
+      - WebSearch
+    instructions: |
+      1. Analyze the CI failure logs
+      2. Identify the root cause
+      3. Fix the issue with minimal changes
+      4. Ensure all tests pass after fix
+
+  bug-fix:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.1
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Bash
+      - Grep
+    instructions: |
+      1. Reproduce the bug if possible
+      2. Fix with proper error handling
+      3. Add test coverage for the fix
+      4. Verify no regressions
+
+  security:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.0
+    tools:
+      - Read
+      - Edit
+      - Grep
+      - WebSearch
+    instructions: |
+      1. Follow OWASP guidelines
+      2. Add input validation
+      3. Never expose sensitive data
+      4. Add security tests
+
+  performance:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.3
+    tools:
+      - Read
+      - Edit
+      - Bash
+      - Grep
+    instructions: |
+      1. Profile the code
+      2. Identify bottlenecks
+      3. Optimize algorithms/queries
+      4. Verify improvements
+
+  code-review:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.2
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Grep
+    instructions: |
+      1. Implement CodeRabbit suggestions
+      2. Follow project conventions
+      3. Improve code quality
+      4. Add missing tests
+
+# Auto-fix settings
+settings:
+  auto_create_pr: true
+  auto_merge_on_success: false
+  require_human_approval: true
+  max_retries: 2
+
+  # Branch naming
+  branch_prefix: "auto-fix"
+
+  # PR settings
+  pr_labels:
+    - "auto-fix"
+    - "needs-review"
+
+  # Validation requirements
+  required_checks:
+    - "test"
+    - "lint"
+    - "build"
+
+# Triggers
+triggers:
+  - workflow_failure
+  - coderabbit_comment
+  - security_alert
+  - dependabot_alert
+  - sonarcloud_issue
+
+# Notifications
+notifications:
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+
+  github:
+    enabled: true
+    comment_on_pr: true
+    assign_reviewers: false
