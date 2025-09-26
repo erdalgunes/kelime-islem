@@ -95,7 +95,14 @@ jobs:
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
     - name: Run ${{ matrix.platform }} tests
-      run: ./gradlew ${{ matrix.task }} --stacktrace
+      run: |
+        START_TIME=$(date +%s)
+        ./gradlew ${{ matrix.task }} --stacktrace --build-cache
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        echo "## ✅ ${{ matrix.platform }} Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "- **Duration**: ${DURATION}s" >> $GITHUB_STEP_SUMMARY
+        echo "- **Task**: \`${{ matrix.task }}\`" >> $GITHUB_STEP_SUMMARY
 
     - name: Generate test report
       uses: dorny/test-reporter@1.9.1
@@ -136,10 +143,19 @@ jobs:
         cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
     - name: Run tests with coverage
-      run: ./gradlew testDebugUnitTest koverXmlReport koverHtmlReport
+      run: ./gradlew testDebugUnitTest koverXmlReport koverHtmlReport --build-cache
 
     - name: Verify coverage threshold
-      run: ./gradlew koverVerify
+      run: |
+        ./gradlew koverVerify --build-cache || EXIT_CODE=$?
+        if [ -f composeApp/build/reports/kover/report.xml ]; then
+          COVERAGE=$(grep -oP 'line-rate="\K[^"]+' composeApp/build/reports/kover/report.xml | head -1)
+          PERCENTAGE=$(echo "scale=1; $COVERAGE * 100" | bc)
+          echo "## 📊 Code Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "- **Overall Coverage**: ${PERCENTAGE}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Minimum Required**: 80%" >> $GITHUB_STEP_SUMMARY
+        fi
+        exit ${EXIT_CODE:-0}
       continue-on-error: ${{ github.event_name != 'pull_request' }}
 
     - name: SonarCloud Scan

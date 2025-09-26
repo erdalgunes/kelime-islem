@@ -67,4 +67,8 @@ runs:
       run: |
         echo "GRADLE_OPTS=-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true" >> $GITHUB_ENV
         echo "KOTLIN_COMPILER_EXECUTION_STRATEGY=in-process" >> $GITHUB_ENV
-        echo "Branch type detected: ${GITHUB_REF_NAME}" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 KMP Environment Setup" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch**: ${GITHUB_REF_NAME}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Java Version**: ${{ inputs.java-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Cache Mode**: ${{ inputs.cache-read-only == 'true' && 'Read-only' || 'Read-write' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Runner OS**: ${RUNNER_OS}" >> $GITHUB_STEP_SUMMARY
