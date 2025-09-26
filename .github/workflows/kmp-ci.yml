@@ -25,7 +25,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Full history for SonarCloud
 
@@ -43,7 +43,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload detekt reports
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: detekt-reports
@@ -86,7 +86,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@v4
 
     - name: Setup KMP Environment
       uses: ./.github/actions/setup-kmp
@@ -113,7 +113,7 @@ jobs:
         reporter: java-junit
 
     - name: Upload test results
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results-${{ matrix.platform }}
@@ -132,7 +132,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -159,14 +159,14 @@ jobs:
       continue-on-error: ${{ github.event_name != 'pull_request' }}
 
     - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@e44258b109568baa0df60ed515909fc6c72cba92 # v3.0.0
+      uses: SonarSource/sonarcloud-github-action@v3
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     - name: Upload coverage to Codecov
       if: always()
-      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
+      uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./composeApp/build/reports/kover/report.xml
@@ -176,7 +176,7 @@ jobs:
 
     - name: Add coverage comment to PR
       if: github.event_name == 'pull_request'
-      uses: mi-kas/kover-report@3e6425b680fc7057c36a87d380406334e87c3515 # v1.9
+      uses: mi-kas/kover-report@v1.9
       with:
         path: composeApp/build/reports/kover/report.xml
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -186,7 +186,7 @@ jobs:
         min-coverage-changed-files: 80
 
     - name: Upload coverage reports
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: coverage-reports
@@ -203,10 +203,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@v4
 
     - name: Run Trivy security scan
-      uses: aquasecurity/trivy-action@f781cce5aab226378ee181d764ab90ea0be3cdd8 # v0.25.0
+      uses: aquasecurity/trivy-action@v0.25.0
       with:
         scan-type: 'fs'
         scan-ref: '.'
@@ -216,7 +216,7 @@ jobs:
         ignore-unfixed: true
 
     - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@4f3212b61783c3c68e8309a0f18a699764811cda # v3.27.1
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
@@ -242,7 +242,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@v4
 
     - name: Setup KMP Environment
       uses: ./.github/actions/setup-kmp
@@ -262,14 +262,14 @@ jobs:
       continue-on-error: true
 
     - name: Upload APK
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@v4
       with:
         name: debug-apk
         path: composeApp/build/outputs/apk/debug/*.apk
         retention-days: 30
 
     - name: Upload Desktop artifacts
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@v4
       if: success()
       with:
         name: desktop-artifacts
@@ -277,7 +277,7 @@ jobs:
         retention-days: 30
 
     - name: Upload Web artifacts
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@v4
       if: success()
       with:
         name: web-artifacts
@@ -294,7 +294,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@v4
 
     - name: Setup KMP Environment
       uses: ./.github/actions/setup-kmp
@@ -308,7 +308,7 @@ jobs:
         echo "Check build/dependencyUpdates/report.txt for available updates"
 
     - name: Upload dependency report
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@v4
       with:
         name: dependency-updates-report
         path: build/dependencyUpdates/
