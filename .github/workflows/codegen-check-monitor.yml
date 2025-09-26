@@ -12,13 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     # Only trigger when there's a failure AND there are associated pull requests
     if: |
-      ((github.event.check_suite.conclusion == 'failure' && 
+      (github.event.check_suite.conclusion == 'failure' && 
        github.event.check_suite.pull_requests && 
        length(github.event.check_suite.pull_requests) > 0) ||
       (github.event.workflow_run.conclusion == 'failure' && 
        github.event.workflow_run.pull_requests && 
-       length(github.event.workflow_run.pull_requests) > 0)) &&
-      github.token != ''
+       length(github.event.workflow_run.pull_requests) > 0)
     
     steps:
       - name: Check failure context
