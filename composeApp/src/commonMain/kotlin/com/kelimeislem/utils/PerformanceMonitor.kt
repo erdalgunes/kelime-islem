@@ -7,7 +7,7 @@ import kotlin.time.TimeSource
  * Simple performance monitoring utility for tracking operation durations
  */
 object PerformanceMonitor {
-    private val timeSource = TimeSource.Monotonic
+    val timeSource = TimeSource.Monotonic
 
     /**
      * Measures the execution time of a block of code
