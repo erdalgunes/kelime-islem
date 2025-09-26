@@ -75,9 +75,9 @@ jobs:
             // Create Codegen mention
             const codegenComment = `@codegen-sh Please fix the issue identified by CodeRabbit:
 
-${issueLine}
+            ${issueLine}
 
-Reference: ${commentUrl}`;
+            Reference: ${commentUrl}`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
