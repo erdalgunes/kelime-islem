@@ -1,0 +1,289 @@
+name: PR Label Explainer Bot
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, opened, synchronize]
+  workflow_run:
+    workflows: ["PR Auto Labeler"]
+    types: [completed]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  explain-labels:
+    name: Explain PR Labels
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get PR details and analyze labels
+        id: analyze
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            let pr_number;
+
+            // Get PR number based on event type
+            if (context.eventName === 'pull_request') {
+              pr_number = context.issue.number;
+            } else if (context.eventName === 'workflow_run') {
+              // Extract PR number from workflow run
+              const branch = context.payload.workflow_run.head_branch;
+              const pulls = await github.rest.pulls.list({
+                owner,
+                repo,
+                head: `${owner}:${branch}`,
+                state: 'open'
+              });
+              if (pulls.data.length === 0) return;
+              pr_number = pulls.data[0].number;
+            }
+
+            if (!pr_number) {
+              console.log('No PR number found');
+              return;
+            }
+
+            // Get PR details
+            const { data: pr } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pr_number
+            });
+
+            // Get labels
+            const labels = pr.labels.map(l => l.name);
+
+            // Get changed files for context
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner,
+              repo,
+              pull_number: pr_number,
+              per_page: 100
+            });
+
+            // Categorize labels
+            const sizeLabels = labels.filter(l => l.startsWith('size/'));
+            const reviewLabels = labels.filter(l => l.startsWith('needs/'));
+            const priorityLabels = labels.filter(l => l.startsWith('priority/'));
+            const statusLabels = labels.filter(l => l.startsWith('status/'));
+            const approvalLabels = labels.filter(l => l.startsWith('approved/'));
+            const otherLabels = labels.filter(l =>
+              !l.startsWith('size/') &&
+              !l.startsWith('needs/') &&
+              !l.startsWith('priority/') &&
+              !l.startsWith('status/') &&
+              !l.startsWith('approved/')
+            );
+
+            // Build explanation comment
+            let comment = `## 🤖 PR Label Analysis\n\n`;
+            comment += `This PR has been automatically analyzed and labeled to help reviewers understand what type of review is needed.\n\n`;
+
+            // Quick summary
+            comment += `### 📋 Quick Summary\n`;
+            comment += `- **Total Changes**: ${pr.additions} additions, ${pr.deletions} deletions\n`;
+            comment += `- **Files Changed**: ${pr.changed_files} files\n`;
+            comment += `- **Labels Applied**: ${labels.length} labels\n\n`;
+
+            // Size analysis
+            if (sizeLabels.length > 0) {
+              comment += `### 📊 Size & Complexity\n`;
+              const sizeLabel = sizeLabels[0];
+              const totalLines = pr.additions + pr.deletions;
+
+              let sizeExplanation = '';
+              if (sizeLabel === 'size/XS') {
+                sizeExplanation = `This is a very small change (${totalLines} lines). Should be quick to review (~5 minutes).`;
+              } else if (sizeLabel === 'size/S') {
+                sizeExplanation = `This is a small change (${totalLines} lines). Should take 10-15 minutes to review.`;
+              } else if (sizeLabel === 'size/M') {
+                sizeExplanation = `This is a medium-sized change (${totalLines} lines). Please allocate 30-45 minutes for thorough review.`;
+              } else if (sizeLabel === 'size/L') {
+                sizeExplanation = `This is a large change (${totalLines} lines). Please allocate 1-2 hours for comprehensive review.`;
+              } else if (sizeLabel === 'size/XL') {
+                sizeExplanation = `This is a very large change (${totalLines} lines). Consider breaking into smaller PRs if possible. Allocate 2+ hours for review.`;
+              }
+
+              comment += `- **${sizeLabel}**: ${sizeExplanation}\n\n`;
+            }
+
+            // Review requirements with explanations
+            if (reviewLabels.length > 0) {
+              comment += `### 🔍 Specialist Review Required\n`;
+              comment += `<details>\n<summary>Click to see why these reviews are needed</summary>\n\n`;
+
+              for (const label of reviewLabels) {
+                comment += `#### ${label}\n`;
+
+                if (label === 'needs/architecture-review') {
+                  const coreFiles = files.filter(f =>
+                    f.filename.includes('/core/') ||
+                    f.filename.includes('/domain/') ||
+                    f.filename.includes('/infrastructure/')
+                  );
+                  comment += `- **Why**: Changes detected in core system architecture\n`;
+                  comment += `- **Files**: ${coreFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${coreFiles.length > 3 ? \` and ${coreFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Action**: Architecture team should review for design patterns, scalability, and system integration\n`;
+                } else if (label === 'needs/security-review') {
+                  const securityFiles = files.filter(f =>
+                    f.filename.includes('auth') ||
+                    f.filename.includes('crypto') ||
+                    f.filename.includes('Token') ||
+                    f.filename.includes('Permission')
+                  );
+                  comment += `- **Why**: Security-sensitive code detected\n`;
+                  comment += `- **Files**: ${securityFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${securityFiles.length > 3 ? \` and ${securityFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Action**: Security team should review for vulnerabilities, proper authentication, and data protection\n`;
+                } else if (label === 'needs/performance-review') {
+                  const perfFiles = files.filter(f =>
+                    f.filename.includes('Cache') ||
+                    f.filename.includes('Repository') ||
+                    f.filename.includes('Query') ||
+                    f.filename.includes('PerformanceMonitor')
+                  );
+                  comment += `- **Why**: Performance-critical components modified\n`;
+                  comment += `- **Files**: ${perfFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${perfFiles.length > 3 ? \` and ${perfFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Action**: Performance team should review for optimization opportunities and potential bottlenecks\n`;
+                } else if (label === 'needs/database-review') {
+                  const dbFiles = files.filter(f =>
+                    f.filename.endsWith('.sql') ||
+                    f.filename.includes('migration') ||
+                    f.filename.includes('Database') ||
+                    f.filename.includes('Schema')
+                  );
+                  comment += `- **Why**: Database schema or query changes detected\n`;
+                  comment += `- **Files**: ${dbFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${dbFiles.length > 3 ? \` and ${dbFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Action**: Database team should review for migrations, performance, and data integrity\n`;
+                } else if (label === 'needs/kmp-review') {
+                  const kmpFiles = files.filter(f =>
+                    f.filename.includes('/commonMain/') ||
+                    f.filename.includes('/androidMain/') ||
+                    f.filename.includes('/jsMain/')
+                  );
+                  comment += `- **Why**: Kotlin Multiplatform code changes detected\n`;
+                  comment += `- **Files**: ${kmpFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${kmpFiles.length > 3 ? \` and ${kmpFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Action**: KMP expert should review for platform compatibility and proper expect/actual implementations\n`;
+                } else if (label === 'needs/ui-review') {
+                  const uiFiles = files.filter(f =>
+                    f.filename.includes('/ui/') ||
+                    f.filename.includes('Composable') ||
+                    f.filename.includes('Theme') ||
+                    f.filename.includes('Style')
+                  );
+                  comment += `- **Why**: User interface changes detected\n`;
+                  comment += `- **Files**: ${uiFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${uiFiles.length > 3 ? \` and ${uiFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Action**: UI/UX team should review for design consistency and user experience\n`;
+                } else if (label === 'needs/test-review') {
+                  const testFiles = files.filter(f =>
+                    f.filename.includes('Test') ||
+                    f.filename.includes('/test/')
+                  );
+                  comment += `- **Why**: Test coverage or test implementation changes\n`;
+                  comment += `- **Files**: ${testFiles.slice(0, 3).map(f => \`\\\`${f.filename}\\\`\`).join(', ')}${testFiles.length > 3 ? \` and ${testFiles.length - 3} more\` : ''}\n`;
+                  comment += `- **Action**: QA team should review test coverage and test quality\n`;
+                }
+                comment += `\n`;
+              }
+
+              comment += `</details>\n\n`;
+            }
+
+            // Priority explanation
+            if (priorityLabels.length > 0) {
+              comment += `### ⚡ Priority Level\n`;
+              const priority = priorityLabels[0];
+
+              if (priority === 'priority/urgent') {
+                comment += `- **🔴 URGENT**: This PR contains critical fixes or breaking changes. Please review immediately.\n`;
+              } else if (priority === 'priority/normal') {
+                comment += `- **🟡 Normal**: Standard priority. Please review within normal workflow.\n`;
+              } else if (priority === 'priority/low') {
+                comment += `- **🟢 Low**: Documentation or minor changes. Review when convenient.\n`;
+              }
+              comment += `\n`;
+            }
+
+            // Status indicators
+            if (statusLabels.length > 0) {
+              comment += `### ✅ CI/CD Status\n`;
+              for (const label of statusLabels) {
+                if (label === 'status/ci-passing') {
+                  comment += `- ✅ All CI checks are passing\n`;
+                } else if (label === 'status/quality-gate-pass') {
+                  comment += `- ✅ SonarCloud quality gate passed\n`;
+                } else if (label === 'status/ai-reviewed') {
+                  comment += `- ✅ CodeRabbit AI review completed\n`;
+                } else if (label === 'status/ready-for-human') {
+                  comment += `- 👀 All automated checks passed - ready for human review\n`;
+                }
+              }
+              comment += `\n`;
+            }
+
+            // Approval status
+            if (approvalLabels.length > 0) {
+              comment += `### ✔️ Approvals Received\n`;
+              for (const label of approvalLabels) {
+                const domain = label.replace('approved/', '');
+                comment += `- ✅ ${domain.charAt(0).toUpperCase() + domain.slice(1)} review completed\n`;
+              }
+              comment += `\n`;
+            }
+
+            // Other labels
+            if (otherLabels.length > 0) {
+              comment += `### 🏷️ Other Labels\n`;
+              for (const label of otherLabels) {
+                if (label === 'documentation') {
+                  comment += `- 📚 **documentation**: Contains documentation changes\n`;
+                } else if (label === 'ci') {
+                  comment += `- 🔧 **ci**: Contains CI/CD configuration changes\n`;
+                } else if (label === 'dependencies') {
+                  comment += `- 📦 **dependencies**: Contains dependency updates\n`;
+                } else {
+                  comment += `- **${label}**\n`;
+                }
+              }
+              comment += `\n`;
+            }
+
+            // Next steps
+            comment += `### 🎯 Next Steps for Reviewers\n`;
+
+            if (reviewLabels.length === 0 && statusLabels.includes('status/ready-for-human')) {
+              comment += `1. ✅ All automated checks have passed\n`;
+              comment += `2. 👀 Please review the code changes\n`;
+              comment += `3. 💬 Leave feedback or approve if ready\n`;
+            } else if (reviewLabels.length > 0) {
+              comment += `1. 🔍 Specialists needed for: ${reviewLabels.map(l => l.replace('needs/', '')).join(', ')}\n`;
+              comment += `2. 📋 Review the specific areas mentioned above\n`;
+              comment += `3. ✅ Add \`approved/*\` labels when your review is complete\n`;
+              comment += `4. 🚀 PR can be merged when all required reviews are done\n`;
+            } else {
+              comment += `1. ⏳ Waiting for automated checks to complete\n`;
+              comment += `2. 🔄 Labels will be updated automatically\n`;
+            }
+
+            // Footer
+            comment += `\n---\n`;
+            comment += `*🤖 This comment is automatically updated when labels change. [Learn more about our labeling system](https://github.com/${owner}/${repo}/blob/main/docs/PR_LABELS.md)*`;
+
+            // Output for next step
+            core.setOutput('pr_number', pr_number);
+            core.setOutput('comment_body', comment);
+
+      - name: Create or update explanation comment
+        if: steps.analyze.outputs.pr_number
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ steps.analyze.outputs.pr_number }}
+          body: ${{ steps.analyze.outputs.comment_body }}
+          edit-mode: replace
+          comment-id: pr-label-explainer
