@@ -1,0 +1,86 @@
+name: Codegen-CodeRabbit Integration
+
+on:
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  trigger-codegen-for-coderabbit:
+    name: Auto-trigger Codegen for CodeRabbit Issues
+    runs-on: ubuntu-latest
+    if: |
+      github.event.comment.user.login == 'coderabbitai' &&
+      (contains(github.event.comment.body, '```suggestion') ||
+       contains(github.event.comment.body, '⚠️') ||
+       contains(github.event.comment.body, '🔴') ||
+       contains(github.event.comment.body, 'error') ||
+       contains(github.event.comment.body, 'issue'))
+
+    steps:
+      - name: Parse CodeRabbit comment
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+            console.log('CodeRabbit comment detected');
+
+            // Check if it's a suggestion or issue
+            const hasSuggestion = comment.includes('```suggestion');
+            const hasIssue = comment.includes('⚠️') || comment.includes('🔴');
+
+            // Extract relevant info
+            let issueType = 'general';
+            if (hasSuggestion) issueType = 'suggestion';
+            if (hasIssue) issueType = 'issue';
+
+            core.setOutput('issue_type', issueType);
+            core.setOutput('should_trigger', 'true');
+
+            return { issueType, shouldTrigger: true };
+
+      - name: Trigger Codegen
+        if: steps.parse.outputs.should_trigger == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueType = '${{ steps.parse.outputs.issue_type }}';
+            const originalComment = context.payload.comment.body;
+
+            // Create a mention to Codegen with context
+            const codegenPrompt = `@codegen Please review and fix the ${issueType} identified by CodeRabbit:
+
+            <coderabbit-feedback>
+            ${originalComment.substring(0, 1000)}
+            </coderabbit-feedback>
+
+            Please apply the suggested fixes or resolve the identified issues.`;
+
+            // Post comment mentioning Codegen
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: codegenPrompt
+            });
+
+            console.log('Successfully triggered Codegen for CodeRabbit feedback');
+
+      - name: Add reaction
+        if: steps.parse.outputs.should_trigger == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Add robot reaction to show integration is working
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
