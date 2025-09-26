@@ -1,0 +1,253 @@
+name: Proactive CI/CD Healing
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+  checks: write
+
+jobs:
+  scan-and-fix:
+    name: Proactive Issue Detection & Fix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+
+      - name: Setup environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Scan for issues
+        id: scan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = [];
+            const { exec } = require('child_process');
+            const util = require('util');
+            const execAsync = util.promisify(exec);
+
+            // 1. Check for lint errors
+            try {
+              await execAsync('npm run lint');
+            } catch (error) {
+              issues.push({
+                type: 'lint',
+                severity: 'medium',
+                description: 'Linting errors detected',
+                details: error.stdout || error.message
+              });
+            }
+
+            // 2. Check for test failures
+            try {
+              await execAsync('npm test -- --passWithNoTests');
+            } catch (error) {
+              issues.push({
+                type: 'test',
+                severity: 'high',
+                description: 'Test failures detected',
+                details: error.stdout || error.message
+              });
+            }
+
+            // 3. Check for build errors
+            try {
+              await execAsync('npm run build');
+            } catch (error) {
+              issues.push({
+                type: 'build',
+                severity: 'critical',
+                description: 'Build failures detected',
+                details: error.stdout || error.message
+              });
+            }
+
+            // 4. Security audit
+            try {
+              const { stdout } = await execAsync('npm audit --json');
+              const audit = JSON.parse(stdout);
+              if (audit.metadata.vulnerabilities.high > 0 || audit.metadata.vulnerabilities.critical > 0) {
+                issues.push({
+                  type: 'security',
+                  severity: 'critical',
+                  description: 'Security vulnerabilities found',
+                  details: audit.metadata.vulnerabilities
+                });
+              }
+            } catch (error) {
+              console.log('Audit check failed:', error.message);
+            }
+
+            // 5. Check for TypeScript errors
+            try {
+              await execAsync('npx tsc --noEmit');
+            } catch (error) {
+              issues.push({
+                type: 'typescript',
+                severity: 'high',
+                description: 'TypeScript errors detected',
+                details: error.stdout || error.message
+              });
+            }
+
+            core.setOutput('issues', JSON.stringify(issues));
+            core.setOutput('issue_count', issues.length);
+
+            // Log summary
+            if (issues.length > 0) {
+              console.log(`🔍 Found ${issues.length} issues to fix:`);
+              issues.forEach(issue => {
+                console.log(`  - ${issue.type}: ${issue.description} (${issue.severity})`);
+              });
+            } else {
+              console.log('✅ No issues detected - code is clean!');
+            }
+
+            return issues;
+
+      - name: Trigger Codegen.sh agents for fixes
+        if: steps.scan.outputs.issue_count > 0
+        id: dispatch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = JSON.parse('${{ steps.scan.outputs.issues }}');
+            const fixRequests = [];
+
+            for (const issue of issues) {
+              // Create fix request for Codegen.sh
+              const request = {
+                repository: '${{ github.repository }}',
+                branch: '${{ github.event.pull_request.head.ref || github.ref_name }}',
+                pr_number: '${{ github.event.pull_request.number || "" }}',
+                issue_type: issue.type,
+                severity: issue.severity,
+                description: issue.description,
+                details: issue.details,
+                commit_sha: '${{ github.sha }}',
+                workflow_run_id: '${{ github.run_id }}'
+              };
+
+              fixRequests.push(request);
+
+              console.log(`📤 Dispatching ${issue.type} fix to Codegen.sh...`);
+
+              // Send to Codegen.sh API
+              try {
+                const response = await fetch('https://api.codegen.sh/v1/agents/spawn', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${{ secrets.CODEGEN_API_KEY }}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    ...request,
+                    prompt: `Fix ${issue.type} issue: ${issue.description}. Details: ${JSON.stringify(issue.details)}`,
+                    agent_config: {
+                      model: 'claude-4-0-sonnet-20250805',
+                      tools: ['Read', 'Edit', 'MultiEdit', 'Bash', 'Grep'],
+                      auto_commit: true,
+                      commit_message: `fix: Auto-fix ${issue.type} issues`,
+                      branch_name: `auto-fix/${issue.type}-${{ github.run_id }}`
+                    }
+                  })
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  console.log(`✅ Agent spawned: ${data.agent_id}`);
+                } else {
+                  console.log(`⚠️ Failed to spawn agent for ${issue.type}`);
+                }
+              } catch (error) {
+                console.error(`Error dispatching to Codegen.sh:`, error);
+              }
+            }
+
+            core.setOutput('fix_requests', JSON.stringify(fixRequests));
+
+      - name: Post issue summary
+        if: github.event_name == 'pull_request' && steps.scan.outputs.issue_count > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = JSON.parse('${{ steps.scan.outputs.issues }}');
+
+            let comment = `## 🔍 Proactive Issue Detection\n\n`;
+            comment += `Found **${issues.length} issues** that need fixing:\n\n`;
+
+            const grouped = {};
+            for (const issue of issues) {
+              if (!grouped[issue.severity]) grouped[issue.severity] = [];
+              grouped[issue.severity].push(issue);
+            }
+
+            for (const [severity, severityIssues] of Object.entries(grouped)) {
+              const emoji = {
+                critical: '🔴',
+                high: '🟠',
+                medium: '🟡',
+                low: '🟢'
+              }[severity] || '⚪';
+
+              comment += `### ${emoji} ${severity.toUpperCase()} Priority\n`;
+              for (const issue of severityIssues) {
+                comment += `- **${issue.type}**: ${issue.description}\n`;
+              }
+              comment += `\n`;
+            }
+
+            comment += `### 🤖 Auto-Fix Status\n`;
+            comment += `Codegen.sh agents have been dispatched to fix these issues automatically.\n`;
+            comment += `You'll see fix commits appearing shortly.\n\n`;
+            comment += `---\n`;
+            comment += `*Powered by Proactive CI/CD Healing with Codegen.sh*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Create tracking issue for fixes
+        if: steps.scan.outputs.issue_count > 0 && github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = JSON.parse('${{ steps.scan.outputs.issues }}');
+
+            const body = `## Automated Issues Found on Main Branch\n\n` +
+              `Commit: ${{ github.sha }}\n` +
+              `Workflow: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n` +
+              `### Issues:\n` +
+              issues.map(i => `- [ ] ${i.type}: ${i.description}`).join('\n') +
+              `\n\n### Status\n` +
+              `Codegen.sh agents are working on fixes. This issue will be updated as fixes are completed.`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🤖 Auto-fixing ${issues.length} issues from commit ${context.sha.substring(0, 7)}`,
+              body: body,
+              labels: ['auto-fix', 'ci-healing']
+            });

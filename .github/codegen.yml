@@ -1,0 +1,201 @@
+# Codegen.sh Configuration
+# Proactive self-healing CI/CD with autonomous agents
+
+version: 2
+
+# Agent profiles for different tasks
+agents:
+  # Proactive issue detection and fixing
+  proactive-scanner:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.1
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Bash
+      - Grep
+      - WebSearch
+    instructions: |
+      PROACTIVELY scan for issues before they cause failures:
+      1. Check for potential bugs and edge cases
+      2. Identify performance bottlenecks
+      3. Find security vulnerabilities
+      4. Fix issues immediately
+      5. Add tests to prevent regressions
+
+  # Lint and style fixes
+  lint:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.0
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Bash
+    instructions: |
+      1. Fix all linting errors
+      2. Apply consistent code style
+      3. Remove unused imports
+      4. Fix formatting issues
+
+  # Test failures and coverage
+  test:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.1
+    tools:
+      - Read
+      - Edit
+      - Write
+      - Bash
+      - Grep
+    instructions: |
+      1. Fix failing tests
+      2. Add missing test cases
+      3. Improve test coverage to 80%+
+      4. Add edge case tests
+
+  # Build and compilation errors
+  build:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.0
+    tools:
+      - Read
+      - Edit
+      - Bash
+      - Grep
+    instructions: |
+      1. Fix compilation errors
+      2. Resolve import issues
+      3. Fix TypeScript errors
+      4. Ensure clean build
+
+  # Security vulnerabilities
+  security:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.0
+    tools:
+      - Read
+      - Edit
+      - Bash
+      - WebSearch
+    instructions: |
+      1. Fix security vulnerabilities immediately
+      2. Update vulnerable dependencies
+      3. Add input validation
+      4. Follow OWASP top 10 guidelines
+
+  # TypeScript type errors
+  typescript:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.0
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Grep
+    instructions: |
+      1. Fix all TypeScript errors
+      2. Add proper type annotations
+      3. Remove any 'any' types
+      4. Ensure type safety
+
+  # CodeRabbit suggestions
+  code_suggestion:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.1
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Grep
+    instructions: |
+      1. Apply CodeRabbit's exact suggestions
+      2. Maintain code consistency
+      3. Add tests for changes
+      4. Document complex logic
+
+  # Technical debt and improvements
+  tech-debt:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.2
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Write
+      - Grep
+    instructions: |
+      1. Address TODO/FIXME comments
+      2. Refactor complex functions
+      3. Extract reusable components
+      4. Improve code organization
+
+  # Test coverage improvements
+  test-coverage:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.1
+    tools:
+      - Read
+      - Write
+      - Bash
+      - Grep
+    instructions: |
+      1. Analyze uncovered code paths
+      2. Write comprehensive unit tests
+      3. Add integration tests
+      4. Achieve 80%+ coverage
+
+  # Documentation improvements
+  documentation:
+    model: claude-4-0-sonnet-20250805
+    temperature: 0.3
+    tools:
+      - Read
+      - Edit
+      - Write
+    instructions: |
+      1. Add JSDoc to exported functions
+      2. Document complex algorithms
+      3. Add inline comments for clarity
+      4. Update README if needed
+
+# Auto-fix settings
+settings:
+  auto_create_pr: true
+  auto_merge_on_success: false
+  require_human_approval: true
+  max_retries: 2
+
+  # Branch naming
+  branch_prefix: "auto-fix"
+
+  # PR settings
+  pr_labels:
+    - "auto-fix"
+    - "needs-review"
+
+  # Validation requirements
+  required_checks:
+    - "test"
+    - "lint"
+    - "build"
+
+# Triggers
+triggers:
+  - workflow_failure
+  - coderabbit_comment
+  - security_alert
+  - dependabot_alert
+  - sonarcloud_issue
+
+# Notifications
+notifications:
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+
+  github:
+    enabled: true
+    comment_on_pr: true
+    assign_reviewers: false
