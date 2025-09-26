@@ -31,6 +31,17 @@ for workflow in .github/workflows/*.yml; do
 done
 echo -e "${GREEN}✅ All workflows have valid YAML syntax${NC}"
 
+# Validate GitHub Action versions
+echo -e "${YELLOW}🔖 Validating GitHub Action versions...${NC}"
+if [ -f scripts/validate-action-versions.sh ]; then
+    if ! ./scripts/validate-action-versions.sh; then
+        echo -e "${RED}❌ Some GitHub Actions have invalid versions${NC}"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}⚠️  Action version validator not found${NC}"
+fi
+
 # Check if required Gradle tasks exist
 echo -e "${YELLOW}🔨 Checking available Gradle tasks...${NC}"
 if [ -f "./gradlew" ]; then

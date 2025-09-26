@@ -25,14 +25,16 @@ done
 
 # 2. Validate GitHub Actions versions
 echo "🔖 Checking GitHub Actions versions..."
-INVALID_SHAS=$(grep -h "uses:" .github/workflows/*.yml .github/actions/*/action.yml 2>/dev/null | \
-    grep -E "@[a-f0-9]{40}" | \
-    grep -v "#" || true)
 
-if [ ! -z "$INVALID_SHAS" ]; then
-    echo -e "${YELLOW}⚠️  Found SHA-pinned actions without comments:${NC}"
-    echo "$INVALID_SHAS"
-    echo "Consider adding version comments for maintainability"
+# Run the action version validator
+if [ -f scripts/validate-action-versions.sh ]; then
+    if ! ./scripts/validate-action-versions.sh; then
+        echo -e "${RED}❌ GitHub Action version validation failed!${NC}"
+        echo "Fix the invalid action references before pushing."
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}⚠️  Action version validator not found${NC}"
 fi
 
 # 3. Check for common CI issues
@@ -41,9 +43,10 @@ echo "🐛 Checking for common issues..."
 # Known valid tasks that exist in this project
 VALID_TASKS=":composeApp:testDebugUnitTest :composeApp:jsNodeTest :composeApp:lint :composeApp:assembleDebug :composeApp:jsBrowserDistribution :composeApp:koverVerify :composeApp:koverXmlReport :composeApp:koverHtmlReport :composeApp:allTests"
 
-# Check if gradle tasks in workflows are valid
+# Check if gradle tasks in workflows are valid (strip carriage returns)
 GRADLE_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
     grep -oE ":composeApp:[a-zA-Z]+" | \
+    tr -d '\r' | \
     sort -u || true)
 
 if [ ! -z "$GRADLE_TASKS" ]; then
