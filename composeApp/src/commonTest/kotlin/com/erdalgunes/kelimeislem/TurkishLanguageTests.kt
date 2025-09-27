@@ -311,7 +311,8 @@ class TurkishLanguageTests : FreeSpec({
                 val turkishChars = "çğıİöşüabcdefghijklmnoprstuvyz"
                 
                 // Test exactly 100 character limit
-                val maxTurkishTitle = turkishChars.take(25).repeat(4) // Exactly 100 chars
+                val segment = turkishChars.take(25)
+                val maxTurkishTitle = segment + segment + segment + segment // Exactly 100 chars
                 manager.validateTitle(maxTurkishTitle) shouldBe true
                 
                 // Test over limit
