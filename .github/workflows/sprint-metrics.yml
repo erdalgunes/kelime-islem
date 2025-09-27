@@ -125,28 +125,54 @@ jobs:
               per_page: 100
             });
 
-            // Filter PRs within sprint dates
+            // Filter PRs that were active during the sprint
+            // Include if created, merged, or closed during the sprint window
             const sprintPRs = prs.filter(pr => {
               const createdAt = new Date(pr.created_at);
-              return createdAt >= startDate && createdAt <= endDate;
+              const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
+              const closedAt = pr.closed_at ? new Date(pr.closed_at) : null;
+
+              // PR is relevant if any of these dates fall within the sprint
+              return (createdAt >= startDate && createdAt <= endDate) ||
+                     (mergedAt && mergedAt >= startDate && mergedAt <= endDate) ||
+                     (closedAt && closedAt >= startDate && closedAt <= endDate);
             });
 
-            // Calculate metrics
+            // Calculate metrics based on activity within the sprint window
             const prMetrics = {
               total: sprintPRs.length,
-              merged: sprintPRs.filter(pr => pr.merged_at).length,
-              closed: sprintPRs.filter(pr => pr.state === 'closed' && !pr.merged_at).length,
-              open: sprintPRs.filter(pr => pr.state === 'open').length
+              // Count PRs merged during the sprint (by merged_at)
+              merged: sprintPRs.filter(pr => {
+                if (!pr.merged_at) return false;
+                const mergedAt = new Date(pr.merged_at);
+                return mergedAt >= startDate && mergedAt <= endDate;
+              }).length,
+              // Count PRs closed (not merged) during the sprint (by closed_at)
+              closed: sprintPRs.filter(pr => {
+                if (pr.merged_at || !pr.closed_at) return false;
+                const closedAt = new Date(pr.closed_at);
+                return closedAt >= startDate && closedAt <= endDate;
+              }).length,
+              // Count PRs that are still open (created during sprint and still open)
+              open: sprintPRs.filter(pr => {
+                if (pr.state !== 'open') return false;
+                const createdAt = new Date(pr.created_at);
+                return createdAt >= startDate && createdAt <= endDate;
+              }).length
             };
 
-            // Calculate average review time
+            // Calculate average review time only for PRs merged within the sprint window
             let totalReviewTime = 0;
             let reviewedPRs = 0;
 
-            for (const pr of sprintPRs.filter(pr => pr.merged_at)) {
+            for (const pr of sprintPRs) {
+              // Only count PRs that were merged during this sprint
+              if (!pr.merged_at) continue;
+              const mergedAt = new Date(pr.merged_at);
+              if (mergedAt < startDate || mergedAt > endDate) continue;
+
               const created = new Date(pr.created_at);
-              const merged = new Date(pr.merged_at);
-              const reviewTime = (merged - created) / (1000 * 60 * 60); // hours
+              const reviewTime = (mergedAt - created) / (1000 * 60 * 60); // hours
               totalReviewTime += reviewTime;
               reviewedPRs++;
             }
