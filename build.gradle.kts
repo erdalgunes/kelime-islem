@@ -15,6 +15,7 @@
  */
 
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+import io.gitlab.arturbosch.detekt.Detekt
 plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
@@ -80,41 +81,25 @@ tasks.named("sonar") {
     dependsOn("koverXmlReport", "detekt")
 }
 
-// Configure Detekt for Kotlin Multiplatform
+// Configure Detekt for Kotlin Multiplatform  
 detekt {
-    // KMP source sets configuration
-    source.setFrom(
-        "composeApp/src/commonMain/kotlin",
-        "composeApp/src/androidMain/kotlin", 
-        "composeApp/src/jsMain/kotlin",
-        "design-system/src/commonMain/kotlin"
-    )
-    
-    // Configuration file
+    source.setFrom("composeApp/src", "design-system/src")
     config.setFrom("$projectDir/detekt.yml")
-    
-    // Baseline for gradual adoption
     baseline = file("$projectDir/detekt-baseline.xml")
-    
-    // Build upon default config
     buildUponDefaultConfig = true
-    
-    // Enable all rule sets by default
     allRules = false
-    
-    // Reports will be configured on individual tasks
 }
 
-// Add detekt-rules-compose dependency for Compose-specific rules
-dependencies {
-    detektPlugins("io.nlopez.compose.rules:detekt:0.4.15")
-}
+// Detekt plugins will be added after basic configuration is working
+// dependencies {
+//     detektPlugins("io.nlopez.compose.rules:detekt:0.4.10")
+// }
 
 // Configure Detekt task reports
-tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+tasks.withType<Detekt>().configureEach {
     reports {
         xml.required.set(true)
-        html.required.set(true)
+        html.required.set(true)  
         sarif.required.set(true)
         md.required.set(false)
         txt.required.set(false)

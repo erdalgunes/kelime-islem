@@ -52,7 +52,7 @@ testRunner = "1.7.0"
 
 # Build & Development
 ksp = "2.2.20-2.0.3"
-detekt = "1.23.8"
+detekt = "1.23.7"
 
 [libraries]
 # Kotlin stdlib

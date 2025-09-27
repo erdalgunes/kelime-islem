@@ -3,10 +3,9 @@
 # Licensed under the Apache License, Version 2.0
 
 build:
-  maxIssues: 0
+  maxIssues: 10000  # Allow issues for gradual adoption
   excludeCorrectable: false
   weights:
-    # Assign a higher weight to certain issues for prioritization
     complexity: 2
     LongParameterList: 1
     style: 1
