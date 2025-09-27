@@ -2,7 +2,13 @@
 # Comprehensive pre-push hook for Kelime İşlem
 # Full CI simulation before push to catch all failures
 
-set -e
+set -eo pipefail
+
+# Configuration
+PARALLEL_JOBS=4
+CACHE_DIR=".git/hooks-cache"
+SKIP_CHECKS_FILE=".git/skip-checks"
+TASK_TIMEOUT=${TASK_TIMEOUT:-60}
 
 # Colors for output
 RED='\033[0;31m'
@@ -36,20 +42,48 @@ check_gradle_task() {
             return 1
         fi
     fi
-    fi
-    return 0
+
+    grep -qx "$task" "$cache_file"
+}
+
+# Parallel task execution helper
+run_parallel() {
+    local -a tasks=("$@")
+    local -a pids=()
+
+    for i in "${!tasks[@]}"; do
+        local timeout=${TASK_TIMEOUT:-60}  # seconds per task
+        {
+            timeout "$timeout" bash -c "${tasks[$i]}"
+        } &
+        pids+=($!)
+    done
+
+    # Wait for all tasks to complete
+    local failed=0
+    for pid in "${pids[@]}"; do
+        if ! wait "$pid"; then
+            failed=1
+        fi
+    done
+
+    return "$failed"
 }
 
 # 1. Validate workflow YAML syntax
 echo -e "${YELLOW}📝 Validating workflow YAML syntax...${NC}"
-for workflow in .github/workflows/*.yml; do
-    if [ -f "$workflow" ]; then
-        if ! python3 -c "import yaml; yaml.safe_load(open('$workflow'))" 2>/dev/null; then
-            echo -e "${RED}❌ Invalid YAML in $workflow${NC}"
-            exit 1
-        fi
-    fi
-done
+if ! python3 -c "import yaml" >/dev/null 2>&1; then
+    echo -e "${YELLOW}⚠️  PyYAML not available; skipping workflow YAML validation${NC}"
+else
+  for workflow in .github/workflows/*.yml; do
+      if [ -f "$workflow" ]; then
+          if ! python3 -c "import yaml; yaml.safe_load(open('$workflow'))" 2>/dev/null; then
+              echo -e "${RED}❌ Invalid YAML in $workflow${NC}"
+              exit 1
+          fi
+      fi
+  done
+fi
 
 # 2. Validate GitHub Action versions (if script exists)
 if [ -f scripts/validate-action-versions.sh ]; then
@@ -83,6 +117,7 @@ fi
 
 # 4. Extract and validate all Gradle tasks from workflows
 echo -e "${YELLOW}🔨 Validating Gradle tasks in workflows...${NC}"
+
 WORKFLOW_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
     grep -oE "gradlew\s+[a-zA-Z0-9:_-]+(\s|$)" | \
     sed 's/gradlew\s*//' | \
@@ -168,7 +203,7 @@ fi
 
 # 9. Check commit messages (last 5 commits not in origin)
 echo -e "${YELLOW}💬 Checking commit messages...${NC}"
-COMMITS=$(git log origin/$(git rev-parse --abbrev-ref HEAD)..HEAD --oneline 2>/dev/null || git log -5 --oneline)
+COMMITS=$(git log "origin/$(git rev-parse --abbrev-ref HEAD)"..HEAD --oneline 2>/dev/null || git log -5 --oneline)
 if echo "$COMMITS" | grep -E "^[a-f0-9]+ (WIP|wip|temp|TEMP)" > /dev/null; then
     echo -e "${YELLOW}⚠️  Warning: Found WIP/temp commits${NC}"
 fi

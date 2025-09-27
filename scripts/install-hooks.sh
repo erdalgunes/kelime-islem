@@ -1,7 +1,7 @@
 #!/bin/bash
 # Install Git hooks for Kelime İşlem project
 
-set -e
+set -eo pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -9,6 +9,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+show_usage_info() {
+    echo "Available check types to skip:"
+    echo "  Pre-commit: security, platform, kotlin-lint, compose, yaml, workflows, commit-msg, file-size, debug, build"
+    echo "  Pre-push: yaml-validation, gradle-tasks, platform-check, lint-checks, compilation, unit-tests, required-files, commit-analysis"
+    echo ""
+    echo "To skip checks, create .git/skip-checks with check names (one per line)"
+}
 
 echo -e "${BLUE}🔧 Installing Git hooks for Kelime İşlem...${NC}"
 
@@ -59,11 +67,8 @@ install_hook() {
     # Backup existing hook
     backup_hook "$hook_name"
 
-    # Copy the hook
-    cp "$source_hook" "$target_hook"
-
-    # Make it executable
-    chmod +x "$target_hook"
+    # Copy the hook with correct permissions
+    install -m 0755 "$source_hook" "$target_hook"
 
     echo -e "${GREEN}  ✓ Installed $hook_name${NC}"
 }
@@ -113,6 +118,8 @@ echo ""
 echo "To bypass hooks (emergency only):"
 echo "  • git commit --no-verify"
 echo "  • git push --no-verify"
+echo ""
+show_usage_info
 echo ""
 echo -e "${YELLOW}⚠️  Note: Hooks are local to your repository.${NC}"
 echo "  Other contributors need to run this script too."
