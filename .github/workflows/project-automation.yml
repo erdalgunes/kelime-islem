@@ -10,6 +10,13 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  discussions: write
+  projects: write
+
 env:
   PROJECT_ID: ${{ vars.PROJECT_ID || 'PVT_kwHOADr0ls4BELXk' }}
   PROJECT_URL: ${{ vars.PROJECT_URL || 'https://github.com/users/erdalgunes/projects/12' }}

@@ -11,6 +11,12 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  discussions: write
+
 jobs:
   collect-metrics:
     name: Collect Sprint Metrics
@@ -25,16 +31,16 @@ jobs:
           # Use Python for cross-platform date calculations
           python3 << 'EOF'
           import os
-          from datetime import datetime, timedelta
+          from datetime import datetime, timedelta, timezone
 
-          # Project anchor date - all sprints calculated from this
-          ANCHOR_DATE = datetime(2025, 1, 1)
+          # Project anchor date - all sprints calculated from this (UTC)
+          ANCHOR_DATE = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
           if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
               sprint = int('${{ github.event.inputs.sprint_number }}')
           else:
-              # Calculate current sprint based on today's date
-              days_since_anchor = (datetime.now() - ANCHOR_DATE).days
+              # Calculate current sprint based on today's date (UTC)
+              days_since_anchor = (datetime.now(timezone.utc) - ANCHOR_DATE).days
               sprint = (days_since_anchor // 14) + 1
 
           # Calculate sprint start and end dates
@@ -59,9 +65,9 @@ jobs:
             const startDate = '${{ steps.dates.outputs.start_date }}';
             const endDate = '${{ steps.dates.outputs.end_date }}';
 
-            // Get issues in current sprint
+            // Get issues in current sprint (listForRepo returns both issues and PRs)
             const sprintLabel = `sprint/${sprint}`;
-            const issues = await github.paginate(github.rest.issues.listForRepo, {
+            const items = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               labels: sprintLabel,
@@ -69,12 +75,15 @@ jobs:
               per_page: 100
             });
 
-            // Calculate metrics
+            // Filter out pull requests (they have a pull_request property)
+            const issues = items.filter(i => !i.pull_request);
+
+            // Calculate metrics using assignees array instead of deprecated assignee field
             const metrics = {
               total: issues.length,
               completed: issues.filter(i => i.state === 'closed').length,
-              inProgress: issues.filter(i => i.state === 'open' && i.assignee).length,
-              notStarted: issues.filter(i => i.state === 'open' && !i.assignee).length,
+              inProgress: issues.filter(i => i.state === 'open' && Array.isArray(i.assignees) && i.assignees.length > 0).length,
+              notStarted: issues.filter(i => i.state === 'open' && (!Array.isArray(i.assignees) || i.assignees.length === 0)).length,
               bugs: issues.filter(i => i.labels.some(l => l.name === 'bug')).length,
               features: issues.filter(i => i.labels.some(l => l.name === 'enhancement')).length,
             };
@@ -334,10 +343,11 @@ jobs:
             const alternativeCategoryNames = ['General', 'Announcements'];
 
             try {
-              // Get all discussion categories for the repository
+              // Get repository ID and discussion categories
               const query = `
                 query($owner: String!, $name: String!) {
                   repository(owner: $owner, name: $name) {
+                    id
                     discussionCategories(first: 100) {
                       nodes {
                         id
@@ -354,7 +364,9 @@ jobs:
                 name: context.repo.repo
               });
 
+              const repositoryId = result.repository.id;
               const categories = result.repository.discussionCategories.nodes;
+              console.log(`Repository ID: ${repositoryId}`);
               console.log(`Found ${categories.length} discussion categories`);
 
               // Try to find the target category
@@ -400,7 +412,7 @@ jobs:
                   }
                 }
               `, {
-                repositoryId: context.payload.repository.node_id,
+                repositoryId: repositoryId,
                 categoryId: categoryId,
                 title: `Sprint ${{ steps.dates.outputs.sprint_number }} Metrics Report`,
                 body: report

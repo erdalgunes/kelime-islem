@@ -62,7 +62,7 @@ We follow a hybrid Agile approach combining Scrum sprints with Kanban flow:
 - **Spike**: Research/investigation task
 
 ### Issue Workflow
-```
+```text
 📝 Backlog → 🎯 Sprint Ready → 💻 In Progress → 👀 Review → ✅ Done
 ```
 
