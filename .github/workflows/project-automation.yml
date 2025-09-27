@@ -10,6 +10,21 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  discussions: write
+  projects: write
+
+env:
+  PROJECT_ID: ${{ vars.PROJECT_ID || 'PVT_kwHOADr0ls4BELXk' }}
+  PROJECT_URL: ${{ vars.PROJECT_URL || 'https://github.com/users/erdalgunes/projects/12' }}
+
+# Note: GraphQL queries could be optimized by batching field queries with addProjectV2ItemById
+# mutations in a single request. Consider implementing a reusable composite action for common
+# project operations to reduce API calls and improve performance.
+
 jobs:
   add-to-project:
     name: Add to Project Board
@@ -19,7 +34,7 @@ jobs:
       - name: Add issue to project
         uses: actions/add-to-project@v1.0.2
         with:
-          project-url: https://github.com/users/erdalgunes/projects/1
+          project-url: ${{ env.PROJECT_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   move-to-in-progress:
@@ -28,13 +43,106 @@ jobs:
     if: github.event_name == 'issues' && github.event.action == 'assigned'
     steps:
       - name: Move issue to In Progress
-        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        uses: actions/github-script@v7
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          organization: erdalgunes
-          project_id: 1
-          resource_node_id: ${{ github.event.issue.node_id }}
-          status_value: "💻 In Progress"
+          script: |
+            const projectId = '${{ env.PROJECT_ID }}';
+            const itemId = '${{ github.event.issue.node_id }}';
+
+            // Helper function to retry operations with exponential backoff
+            async function retryWithBackoff(operation, maxRetries = 3) {
+              let lastError;
+              for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                  return await operation();
+                } catch (error) {
+                  lastError = error;
+                  if (attempt < maxRetries) {
+                    const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+                    console.log(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                  }
+                }
+              }
+              throw lastError;
+            }
+
+            try {
+              // GraphQL Mutation: Add issue to project board
+              // This mutation ensures the issue is added to the project. If already present, it returns the existing item.
+              // Using retryWithBackoff to handle transient API failures (rate limits, network issues)
+              const addResponse = await retryWithBackoff(async () =>
+                github.graphql(`
+                mutation($projectId: ID!, $contentId: ID!) {
+                  addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                    item {
+                      id  # We need this ID to update the status field later
+                    }
+                  }
+                }
+              `, {
+                projectId,
+                contentId: itemId
+              }));
+
+              // GraphQL Query: Fetch project field metadata
+              // This query retrieves all fields from the project, specifically looking for the "Status" field
+              // and its available options (e.g., "To Do", "In Progress", "Done")
+              const projectData = await github.graphql(`
+                query($projectId: ID!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      fields(first: 20) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options {
+                              id
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `, { projectId });
+
+              const statusField = projectData.node.fields.nodes.find(f => f.name === 'Status');
+              if (statusField) {
+                const inProgressOption = statusField.options.find(o => o.name === '💻 In Progress' || o.name === 'In Progress');
+                if (inProgressOption) {
+                  await github.graphql(`
+                    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                      updateProjectV2ItemFieldValue(
+                        input: {
+                          projectId: $projectId,
+                          itemId: $itemId,
+                          fieldId: $fieldId,
+                          value: { singleSelectOptionId: $optionId }
+                        }
+                      ) {
+                        projectV2Item { id }
+                      }
+                    }
+                  `, {
+                    projectId,
+                    itemId: addResponse.addProjectV2ItemById.item.id,
+                    fieldId: statusField.id,
+                    optionId: inProgressOption.id
+                  });
+                  console.log('✅ Issue moved to In Progress');
+                } else {
+                  core.warning('In Progress status option not found in project');
+                }
+              } else {
+                core.warning('Status field not found in project');
+              }
+            } catch (error) {
+              core.warning(`Failed to update project: ${error.message}`);
+              console.error('Full error:', error);
+            }
 
   move-to-review:
     name: Move to Review
@@ -73,13 +181,79 @@ jobs:
 
       - name: Move linked issues to Review
         if: steps.linked.outputs.result != '[]'
-        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        uses: actions/github-script@v7
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          organization: erdalgunes
-          project_id: 1
-          resource_node_id: ${{ fromJson(steps.linked.outputs.result)[0].id }}
-          status_value: "👀 In Review"
+          script: |
+            const projectId = '${{ env.PROJECT_ID }}';
+            const issues = ${{ steps.linked.outputs.result }};
+
+            for (const issue of issues) {
+              try {
+                // Add issue to project and move to Review
+                const addResponse = await github.graphql(`
+                mutation($projectId: ID!, $contentId: ID!) {
+                  addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                    item { id }
+                  }
+                }
+              `, {
+                projectId,
+                contentId: issue.id
+              });
+
+              // Update status to In Review
+              const projectData = await github.graphql(`
+                query($projectId: ID!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      fields(first: 20) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options { id, name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `, { projectId });
+
+              const statusField = projectData.node.fields.nodes.find(f => f.name === 'Status');
+              if (statusField) {
+                const reviewOption = statusField.options.find(o => o.name === '👀 In Review' || o.name === 'In Review');
+                if (reviewOption) {
+                  await github.graphql(`
+                    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                      updateProjectV2ItemFieldValue(
+                        input: {
+                          projectId: $projectId,
+                          itemId: $itemId,
+                          fieldId: $fieldId,
+                          value: { singleSelectOptionId: $optionId }
+                        }
+                      ) {
+                        projectV2Item { id }
+                      }
+                    }
+                  `, {
+                    projectId,
+                    itemId: addResponse.addProjectV2ItemById.item.id,
+                    fieldId: statusField.id,
+                    optionId: reviewOption.id
+                  });
+                  console.log(`✅ Issue #${issue.number} moved to Review`);
+                } else {
+                  core.warning(`Review status not found for issue #${issue.number}`);
+                }
+              } else {
+                core.warning(`Status field not found for issue #${issue.number}`);
+              }
+              } catch (error) {
+                core.warning(`Failed to update issue #${issue.number}: ${error.message}`);
+              }
+            }
 
   move-to-done:
     name: Move to Done
@@ -89,13 +263,68 @@ jobs:
       (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged)
     steps:
       - name: Move to Done column
-        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        uses: actions/github-script@v7
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          organization: erdalgunes
-          project_id: 1
-          resource_node_id: ${{ github.event.issue.node_id || github.event.pull_request.node_id }}
-          status_value: "✅ Done"
+          script: |
+            const projectId = '${{ env.PROJECT_ID }}';
+            const itemId = '${{ github.event.issue.node_id || github.event.pull_request.node_id }}';
+
+            // Add to project and move to Done
+            const addResponse = await github.graphql(`
+              mutation($projectId: ID!, $contentId: ID!) {
+                addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                  item { id }
+                }
+              }
+            `, {
+              projectId,
+              contentId: itemId
+            });
+
+            // Update status to Done
+            const projectData = await github.graphql(`
+              query($projectId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options { id, name }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, { projectId });
+
+            const statusField = projectData.node.fields.nodes.find(f => f.name === 'Status');
+            if (statusField) {
+              const doneOption = statusField.options.find(o => o.name === '✅ Done' || o.name === 'Done');
+              if (doneOption) {
+                await github.graphql(`
+                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                    updateProjectV2ItemFieldValue(
+                      input: {
+                        projectId: $projectId,
+                        itemId: $itemId,
+                        fieldId: $fieldId,
+                        value: { singleSelectOptionId: $optionId }
+                      }
+                    ) {
+                      projectV2Item { id }
+                    }
+                  }
+                `, {
+                  projectId,
+                  itemId: addResponse.addProjectV2ItemById.item.id,
+                  fieldId: statusField.id,
+                  optionId: doneOption.id
+                });
+              }
+            }
 
   auto-assign-epic:
     name: Auto-assign to Epic
@@ -150,14 +379,65 @@ jobs:
 
       - name: Update project field
         if: steps.sprint.outputs.sprint_number
-        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        uses: actions/github-script@v7
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          organization: erdalgunes
-          project_id: 1
-          resource_node_id: ${{ github.event.issue.node_id }}
-          field_name: "Sprint"
-          field_value: ${{ steps.sprint.outputs.sprint_number }}
+          script: |
+            const projectId = '${{ env.PROJECT_ID }}';
+            const itemId = '${{ github.event.issue.node_id }}';
+            const sprintNumber = '${{ steps.sprint.outputs.sprint_number }}';
+
+            // Add to project
+            const addResponse = await github.graphql(`
+              mutation($projectId: ID!, $contentId: ID!) {
+                addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                  item { id }
+                }
+              }
+            `, {
+              projectId,
+              contentId: itemId
+            });
+
+            // Get Sprint field
+            const projectData = await github.graphql(`
+              query($projectId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2Field {
+                          id
+                          name
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, { projectId });
+
+            const sprintField = projectData.node.fields.nodes.find(f => f.name === 'Sprint');
+            if (sprintField) {
+              await github.graphql(`
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
+                  updateProjectV2ItemFieldValue(
+                    input: {
+                      projectId: $projectId,
+                      itemId: $itemId,
+                      fieldId: $fieldId,
+                      value: { text: $value }
+                    }
+                  ) {
+                    projectV2Item { id }
+                  }
+                }
+              `, {
+                projectId,
+                itemId: addResponse.addProjectV2ItemById.item.id,
+                fieldId: sprintField.id,
+                value: sprintNumber
+              });
+            }
 
   calculate-story-points:
     name: Calculate Story Points
@@ -182,14 +462,65 @@ jobs:
 
       - name: Update story points field
         if: steps.points.outputs.points
-        uses: leonsteinhaeuser/project-beta-automations@v2.2.1
+        uses: actions/github-script@v7
         with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          organization: erdalgunes
-          project_id: 1
-          resource_node_id: ${{ github.event.issue.node_id }}
-          field_name: "Story Points"
-          field_value: ${{ steps.points.outputs.points }}
+          script: |
+            const projectId = '${{ env.PROJECT_ID }}';
+            const itemId = '${{ github.event.issue.node_id }}';
+            const points = '${{ steps.points.outputs.points }}';
+
+            // Add to project
+            const addResponse = await github.graphql(`
+              mutation($projectId: ID!, $contentId: ID!) {
+                addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                  item { id }
+                }
+              }
+            `, {
+              projectId,
+              contentId: itemId
+            });
+
+            // Get Story Points field
+            const projectData = await github.graphql(`
+              query($projectId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2Field {
+                          id
+                          name
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, { projectId });
+
+            const pointsField = projectData.node.fields.nodes.find(f => f.name === 'Story Points');
+            if (pointsField) {
+              await github.graphql(`
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: Float!) {
+                  updateProjectV2ItemFieldValue(
+                    input: {
+                      projectId: $projectId,
+                      itemId: $itemId,
+                      fieldId: $fieldId,
+                      value: { number: $value }
+                    }
+                  ) {
+                    projectV2Item { id }
+                  }
+                }
+              `, {
+                projectId,
+                itemId: addResponse.addProjectV2ItemById.item.id,
+                fieldId: pointsField.id,
+                value: parseFloat(points)
+              });
+            }
 
   daily-standup-reminder:
     name: Daily Standup Reminder
@@ -208,10 +539,11 @@ jobs:
             });
 
             try {
-              // Dynamically resolve discussion category
+              // Query repository ID and discussion categories together
               const query = `
                 query($owner: String!, $name: String!) {
                   repository(owner: $owner, name: $name) {
+                    id
                     discussionCategories(first: 100) {
                       nodes {
                         id
@@ -228,6 +560,12 @@ jobs:
                 name: context.repo.repo
               });
 
+              // Check if repository ID was returned
+              if (!result.repository || !result.repository.id) {
+                throw new Error('Could not retrieve repository ID from GraphQL');
+              }
+
+              const repositoryId = result.repository.id;
               const categories = result.repository.discussionCategories.nodes;
 
               // Try to find Daily Standups category, fall back to General or first available
@@ -263,7 +601,7 @@ jobs:
                   }
                 }
               `, {
-                repositoryId: context.payload.repository.node_id,
+                repositoryId: repositoryId,
                 categoryId: category.id,
                 title: `Daily Standup - ${today}`,
                 body: `## Daily Standup - ${today}\n\nPlease share your updates:\n\n### Template\n\\\`\\\`\\\`markdown\n## @your-username\n\n### Yesterday\n- What you completed\n\n### Today\n- What you're working on\n\n### Blockers\n- Any impediments\n\\\`\\\`\\\`\n\nRemember to:\n- Be specific about issue numbers\n- Mention any PRs needing review\n- Flag blockers early\n- Tag team members if you need help`

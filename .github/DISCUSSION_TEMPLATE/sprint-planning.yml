@@ -1,0 +1,117 @@
+title: "Sprint [NUMBER] Planning"
+labels: ["sprint", "planning"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Sprint Planning Session
+        Use this template to document sprint planning discussions and decisions.
+
+  - type: input
+    id: sprint_number
+    attributes:
+      label: Sprint Number
+      placeholder: "e.g., Sprint 12"
+    validations:
+      required: true
+
+  - type: input
+    id: sprint_dates
+    attributes:
+      label: Sprint Dates
+      description: Start and end dates of the sprint (include timezone)
+      placeholder: "e.g., Jan 1 - Jan 14, 2025 (UTC)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: sprint_goals
+    attributes:
+      label: Sprint Goals
+      description: 3-5 clear objectives for this sprint
+      placeholder: |
+        1. Complete user authentication flow
+        2. Fix critical bugs from production
+        3. Improve test coverage to 85%
+    validations:
+      required: true
+
+  - type: textarea
+    id: capacity
+    attributes:
+      label: Team Capacity
+      description: Available team members and any time off
+      placeholder: |
+        - @developer1: Full capacity (80 hours)
+        - @developer2: 75% capacity (60 hours) - vacation Friday
+        - Total capacity: 140 hours
+    validations:
+      required: true
+
+  - type: textarea
+    id: backlog_items
+    attributes:
+      label: Sprint Backlog
+      description: Issues selected for this sprint
+      placeholder: |
+        ### High Priority
+        - #123 - User login feature (8 points)
+        - #456 - Fix payment bug (3 points)
+
+        ### Medium Priority
+        - #789 - Update documentation (2 points)
+
+        ### Tech Debt
+        - #321 - Refactor auth service (5 points)
+    validations:
+      required: true
+
+  - type: input
+    id: total_points
+    attributes:
+      label: Total Story Points
+      description: Sum of all story points in the sprint
+      placeholder: "e.g., 42 points"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: External dependencies or blockers
+      placeholder: |
+        - Waiting for design approval on #123
+        - Backend API needs to be ready for #456
+    validations:
+      required: false
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks
+      description: Potential risks to sprint completion
+      placeholder: |
+        - Risk: New team member onboarding may slow velocity
+        - Mitigation: Pair programming sessions scheduled
+    validations:
+      required: false
+
+  - type: textarea
+    id: carryover
+    attributes:
+      label: Carryover from Previous Sprint
+      description: Items not completed in the last sprint
+      placeholder: |
+        - #111 - Incomplete due to unexpected complexity
+        - #222 - Blocked by external dependency
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Any other relevant information
+    validations:
+      required: false

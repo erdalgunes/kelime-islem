@@ -1,0 +1,130 @@
+title: "Sprint [NUMBER] Retrospective"
+labels: ["sprint", "retrospective"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Sprint Retrospective
+        Reflect on the sprint and identify improvements for the next one.
+
+  - type: input
+    id: sprint_number
+    attributes:
+      label: Sprint Number
+      placeholder: "e.g., Sprint 12"
+    validations:
+      required: true
+
+  - type: input
+    id: sprint_dates
+    attributes:
+      label: Sprint Dates
+      placeholder: "e.g., Jan 1 - Jan 14, 2025"
+    validations:
+      required: true
+
+  - type: textarea
+    id: goals_review
+    attributes:
+      label: Sprint Goals Review
+      description: Which goals were met? Which weren't?
+      placeholder: |
+        ✅ Goal 1: Completed user authentication
+        ❌ Goal 2: Payment bug still in progress (80% done)
+        ✅ Goal 3: Test coverage increased to 86%
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Sprint Metrics
+      description: Key metrics from the sprint
+      placeholder: |
+        - Committed: 42 points
+        - Completed: 38 points
+        - Velocity: 38 points
+        - Bugs found: 3
+        - Bugs fixed: 5
+    validations:
+      required: true
+
+  - type: textarea
+    id: went_well
+    attributes:
+      label: What Went Well?
+      description: Positive aspects to continue
+      placeholder: |
+        - Daily standups were very effective
+        - Code reviews were thorough and helpful
+        - Team collaboration was excellent
+    validations:
+      required: true
+
+  - type: textarea
+    id: improvements
+    attributes:
+      label: What Could Be Improved?
+      description: Areas for improvement
+      placeholder: |
+        - Sprint planning took too long (3 hours)
+        - Some PRs waited too long for review
+        - Testing environment was unstable
+    validations:
+      required: true
+
+  - type: textarea
+    id: surprises
+    attributes:
+      label: What Surprised Us?
+      description: Unexpected events or learnings
+      placeholder: |
+        - The payment integration was more complex than estimated
+        - New team member ramped up faster than expected
+    validations:
+      required: false
+
+  - type: textarea
+    id: action_items
+    attributes:
+      label: Action Items
+      description: Specific improvements for next sprint
+      placeholder: |
+        - [ ] @lead: Set up better testing environment
+        - [ ] @team: Time-box sprint planning to 2 hours
+        - [ ] @dev: Create PR review rotation schedule
+    validations:
+      required: true
+
+  - type: dropdown
+    id: team_mood
+    attributes:
+      label: Team Mood
+      description: Overall team sentiment
+      options:
+        - "😄 Great"
+        - "🙂 Good"
+        - "😐 Okay"
+        - "😕 Challenging"
+        - "😞 Difficult"
+    validations:
+      required: true
+
+  - type: textarea
+    id: recognition
+    attributes:
+      label: Kudos & Recognition
+      description: Celebrate team members' contributions
+      placeholder: |
+        - @developer1 for excellent code reviews
+        - @developer2 for helping onboard new team member
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Any other observations or comments
+    validations:
+      required: false
