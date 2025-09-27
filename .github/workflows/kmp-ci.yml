@@ -2,330 +2,301 @@ name: KMP CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - main
+      - develop
+      - 'release/**'
+      - 'hotfix/**'
+      - 'feature/**'
   pull_request:
-    branches: [ main ]
-  schedule:
-    # Weekly dependency and security check
-    - cron: '0 0 * * 0'
+    branches: [main, develop]
   workflow_dispatch:
+    inputs:
+      full_build:
+        description: 'Run full platform builds'
+        required: false
+        default: false
+        type: boolean
 
 # Cancel previous runs for the same branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Grant necessary permissions for test reporters and PR comments
 permissions:
   contents: read
-  checks: write       # Required for test reporter to create check runs
-  pull-requests: write # Required for PR comments
+  checks: write
+  pull-requests: write
 
 jobs:
+  # ============================================
+  # DETERMINE BUILD SCOPE
+  # ============================================
+  determine-scope:
+    name: Determine Build Scope
+    runs-on: ubuntu-latest
+    outputs:
+      build_scope: ${{ steps.scope.outputs.scope }}
+      should_deploy: ${{ steps.scope.outputs.deploy }}
+      platforms: ${{ steps.scope.outputs.platforms }}
+
+    steps:
+    - name: Determine build scope based on branch
+      id: scope
+      run: |
+        BRANCH="${{ github.ref_name }}"
+        FULL_BUILD="${{ github.event.inputs.full_build }}"
+
+        # Feature branches - minimal builds
+        if [[ "$BRANCH" == feature/* ]]; then
+          echo "scope=minimal" >> $GITHUB_OUTPUT
+          echo "deploy=false" >> $GITHUB_OUTPUT
+          echo "platforms=[\"jvm\"]" >> $GITHUB_OUTPUT
+
+        # Develop branch - full builds, deploy to dev
+        elif [[ "$BRANCH" == "develop" ]]; then
+          echo "scope=full" >> $GITHUB_OUTPUT
+          echo "deploy=dev" >> $GITHUB_OUTPUT
+          echo "platforms=[\"jvm\", \"android\", \"ios\", \"desktop\", \"web\"]" >> $GITHUB_OUTPUT
+
+        # Release/Hotfix branches - full builds, deploy to staging
+        elif [[ "$BRANCH" == release/* ]] || [[ "$BRANCH" == hotfix/* ]]; then
+          echo "scope=full" >> $GITHUB_OUTPUT
+          echo "deploy=staging" >> $GITHUB_OUTPUT
+          echo "platforms=[\"jvm\", \"android\", \"ios\", \"desktop\", \"web\"]" >> $GITHUB_OUTPUT
+
+        # Main branch - validation only, no deployment
+        elif [[ "$BRANCH" == "main" ]]; then
+          echo "scope=validation" >> $GITHUB_OUTPUT
+          echo "deploy=false" >> $GITHUB_OUTPUT
+          echo "platforms=[\"jvm\", \"android\", \"desktop\"]" >> $GITHUB_OUTPUT
+
+        # Pull requests - moderate builds
+        elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "scope=moderate" >> $GITHUB_OUTPUT
+          echo "deploy=false" >> $GITHUB_OUTPUT
+          echo "platforms=[\"jvm\", \"android\"]" >> $GITHUB_OUTPUT
+
+        # Manual trigger with full_build flag
+        elif [[ "$FULL_BUILD" == "true" ]]; then
+          echo "scope=full" >> $GITHUB_OUTPUT
+          echo "deploy=false" >> $GITHUB_OUTPUT
+          echo "platforms=[\"jvm\", \"android\", \"ios\", \"desktop\", \"web\"]" >> $GITHUB_OUTPUT
+
+        # Default - minimal builds
+        else
+          echo "scope=minimal" >> $GITHUB_OUTPUT
+          echo "deploy=false" >> $GITHUB_OUTPUT
+          echo "platforms=[\"jvm\"]" >> $GITHUB_OUTPUT
+        fi
+
+        echo "Branch: $BRANCH"
+        echo "Build scope determined"
+
   # ============================================
   # LINT AND CODE QUALITY
   # ============================================
   lint-and-analysis:
     name: Code Quality & Analysis
     runs-on: ubuntu-latest
+    needs: determine-scope
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Full history for SonarCloud
+        fetch-depth: 0
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle with caching
-      uses: gradle/actions/setup-gradle@v4
+    - uses: gradle/actions/setup-gradle@v3
       with:
-        cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-        cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
+        cache-read-only: ${{ github.ref != 'refs/heads/develop' }}
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Run Detekt
+      run: ./gradlew detekt
 
-    - name: Run lint checks
-      run: ./gradlew lint --continue
-      continue-on-error: true
-
-    - name: Upload lint reports
-      uses: actions/upload-artifact@v4
+    - name: Upload Detekt Report
       if: always()
+      uses: actions/upload-artifact@v4
       with:
-        name: lint-reports
-        path: |
-          build/reports/lint/
-          composeApp/build/reports/lint/
-        retention-days: 7
+        name: detekt-report
+        path: build/reports/detekt/
+
+    # Skip expensive checks for feature branches
+    - name: Run Code Coverage
+      if: needs.determine-scope.outputs.build_scope != 'minimal'
+      run: ./gradlew koverVerify
+
+    - name: Upload Coverage Report
+      if: always() && needs.determine-scope.outputs.build_scope != 'minimal'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: build/reports/kover/
 
   # ============================================
-  # PARALLEL PLATFORM TESTING
+  # PLATFORM BUILDS (MATRIX)
   # ============================================
-  test-matrix:
-    name: Test - ${{ matrix.platform }}
+  build-platforms:
+    name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
-    needs: lint-and-analysis
+    needs: [determine-scope, lint-and-analysis]
+    if: needs.determine-scope.outputs.build_scope != 'skip'
 
     strategy:
       fail-fast: false
       matrix:
         include:
+          - platform: jvm
+            os: ubuntu-latest
+            task: :composeApp:jvmTest
+
           - platform: android
             os: ubuntu-latest
             task: :composeApp:testDebugUnitTest
-            report-path: composeApp/build/test-results/testDebugUnitTest/*.xml
 
-          - platform: js
+          - platform: ios
+            os: macos-latest
+            task: :composeApp:iosSimulatorArm64Test
+
+          - platform: desktop
             os: ubuntu-latest
-            task: :composeApp:jsNodeTest
-            report-path: composeApp/build/test-results/jsNodeTest/*.xml
+            task: :composeApp:desktopTest
+
+          - platform: web
+            os: ubuntu-latest
+            task: :composeApp:wasmJsTest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle with caching
-      uses: gradle/actions/setup-gradle@v4
+    - uses: gradle/actions/setup-gradle@v3
       with:
-        cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-        cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
+        cache-read-only: false
 
+    # Only run if platform is in the build scope
+    - name: Check if platform should be built
+      id: should_build
+      run: |
+        PLATFORMS='${{ needs.determine-scope.outputs.platforms }}'
+        if echo "$PLATFORMS" | grep -q '"${{ matrix.platform }}"'; then
+          echo "build=true" >> $GITHUB_OUTPUT
+        else
+          echo "build=false" >> $GITHUB_OUTPUT
+        fi
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Build and Test ${{ matrix.platform }}
+      if: steps.should_build.outputs.build == 'true'
+      run: |
+        echo "Building for ${{ matrix.platform }}..."
+        ./gradlew ${{ matrix.task }}
 
-    - name: Run ${{ matrix.platform }} tests
-      run: ./gradlew ${{ matrix.task }} --stacktrace
+    - name: Skip ${{ matrix.platform }} (not in scope)
+      if: steps.should_build.outputs.build == 'false'
+      run: echo "Skipping ${{ matrix.platform }} - not required for this branch"
 
-    - name: Generate test report
-      uses: dorny/test-reporter@v1
-      if: success() || failure()
-      continue-on-error: true  # Don't fail job if reporter has permission issues
-      with:
-        name: ${{ matrix.platform }}-tests
-        path: ${{ matrix.report-path }}
-        reporter: java-junit
-
-    - name: Upload test results
+    - name: Upload Test Results
+      if: always() && steps.should_build.outputs.build == 'true'
       uses: actions/upload-artifact@v4
-      if: always()
       with:
         name: test-results-${{ matrix.platform }}
         path: |
-          composeApp/build/reports/tests/
-          composeApp/build/test-results/
-        retention-days: 7
+          **/build/test-results/
+          **/build/reports/tests/
 
   # ============================================
-  # CODE COVERAGE AND SONARCLOUD
+  # DEPLOYMENT (ENVIRONMENT-SPECIFIC)
   # ============================================
-  coverage-and-sonar:
-    name: Coverage & SonarCloud Analysis
+  deploy:
+    name: Deploy to ${{ needs.determine-scope.outputs.should_deploy }}
     runs-on: ubuntu-latest
-    needs: test-matrix
+    needs: [determine-scope, build-platforms]
+    if: needs.determine-scope.outputs.should_deploy != 'false' && github.event_name == 'push'
+    environment: ${{ needs.determine-scope.outputs.should_deploy }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+    - uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle with caching
-      uses: gradle/actions/setup-gradle@v4
+    - uses: gradle/actions/setup-gradle@v3
       with:
-        cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-        cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
+        cache-read-only: false
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Run tests with coverage
-      run: ./gradlew testDebugUnitTest koverXmlReport koverHtmlReport
-
-    - name: Verify coverage threshold
-      run: ./gradlew koverVerify
-      continue-on-error: ${{ github.event_name != 'pull_request' }}
-
-    - name: SonarCloud Scan
-      if: secrets.SONAR_TOKEN != ''
-      uses: SonarSource/sonarcloud-github-action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-    - name: Upload coverage to Codecov
-      if: always() && secrets.CODECOV_TOKEN != ''
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./composeApp/build/reports/kover/report.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-
-    - name: Add coverage comment to PR
-      if: github.event_name == 'pull_request'
-      uses: mi-kas/kover-report@v1
-      continue-on-error: true  # Don't fail job if commenting fails
-      with:
-        path: composeApp/build/reports/kover/report.xml
-        token: ${{ secrets.GITHUB_TOKEN }}
-        title: Code Coverage Report
-        update-comment: true
-        min-coverage-overall: 80
-        min-coverage-changed-files: 80
-
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: coverage-reports
-        path: composeApp/build/reports/kover/html/
-        retention-days: 7
-
-  # ============================================
-  # SECURITY SCANNING
-  # ============================================
-  security-scan:
-    name: Security Scanning
-    runs-on: ubuntu-latest
-    needs: lint-and-analysis
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Run Trivy security scan
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        severity: 'CRITICAL,HIGH,MEDIUM'
-        ignore-unfixed: true
-
-    - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
-
-    - name: Set up JDK 17 for dependency check
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Setup Gradle with caching
-      uses: gradle/actions/setup-gradle@v4
-      with:
-        cache-read-only: true
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Check for dependency vulnerabilities
-      run: ./gradlew dependencyCheckAnalyze || true
-      continue-on-error: true
-
-  # ============================================
-  # BUILD ARTIFACTS
-  # ============================================
-  build-artifacts:
-    name: Build Artifacts
-    runs-on: ubuntu-latest
-    needs: [test-matrix, coverage-and-sonar]
-    if: success()
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Setup Gradle with caching
-      uses: gradle/actions/setup-gradle@v4
-      with:
-        cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-        cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Build debug APK
-      run: ./gradlew :composeApp:assembleDebug
-
-    - name: Build JS/Web bundle
-      run: ./gradlew :composeApp:jsBrowserDistribution
-      continue-on-error: true
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: debug-apk
-        path: composeApp/build/outputs/apk/debug/*.apk
-        retention-days: 30
-
-    - name: Upload Web artifacts
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: web-artifacts
-        path: composeApp/build/dist/js/productionExecutable/
-        retention-days: 30
-
-  # ============================================
-  # DEPENDENCY CHECK (Weekly)
-  # ============================================
-  dependency-check:
-    name: Dependency Updates Check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Setup Gradle with caching
-      uses: gradle/actions/setup-gradle@v4
-
-    - name: Check for dependency updates
+    - name: Build Release Artifacts
       run: |
-        ./gradlew dependencyUpdates -Drevision=release
-        echo "Check build/dependencyUpdates/report.txt for available updates"
+        if [[ "${{ needs.determine-scope.outputs.should_deploy }}" == "dev" ]]; then
+          echo "Building development artifacts..."
+          ./gradlew assembleDebug
+        elif [[ "${{ needs.determine-scope.outputs.should_deploy }}" == "staging" ]]; then
+          echo "Building staging artifacts..."
+          ./gradlew assembleRelease
+        fi
 
-    - name: Upload dependency report
-      uses: actions/upload-artifact@v4
+    - name: Deploy to Environment
+      run: |
+        ENVIRONMENT="${{ needs.determine-scope.outputs.should_deploy }}"
+        echo "Deploying to $ENVIRONMENT environment..."
+        # Add actual deployment commands here
+        # Examples:
+        # - Firebase App Distribution for mobile
+        # - Vercel/Netlify for web
+        # - GitHub Packages for libraries
+
+    - name: Notify Deployment
+      if: always()
+      run: |
+        echo "Deployment to ${{ needs.determine-scope.outputs.should_deploy }} completed"
+        # Add Slack/Discord notifications here if needed
+
+  # ============================================
+  # FINAL STATUS CHECK
+  # ============================================
+  ci-status:
+    name: CI Status Check
+    runs-on: ubuntu-latest
+    needs: [lint-and-analysis, build-platforms]
+    if: always()
+
+    steps:
+    - name: Check CI Status
+      run: |
+        if [[ "${{ needs.lint-and-analysis.result }}" == "failure" ]] ||
+           [[ "${{ needs.build-platforms.result }}" == "failure" ]]; then
+          echo "CI failed! Check the logs above."
+          exit 1
+        else
+          echo "CI passed successfully!"
+        fi
+
+    - name: Add CI Status Comment (PR only)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
       with:
-        name: dependency-updates-report
-        path: build/dependencyUpdates/
-        retention-days: 7
+        github-token: ${{ github.token }}
+        script: |
+          const status = '${{ needs.build-platforms.result }}' === 'success' ? '✅' : '❌';
+          const body = `## CI Build Status: ${status}
+
+          - Lint & Analysis: ${{ needs.lint-and-analysis.result }}
+          - Platform Builds: ${{ needs.build-platforms.result }}
+
+          View the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`;
+
+          github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body
+          });

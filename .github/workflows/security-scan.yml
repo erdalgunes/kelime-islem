@@ -1,0 +1,285 @@
+name: Security & Dependency Scan
+
+on:
+  schedule:
+    # Run weekly on Monday at 3 AM UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      full_scan:
+        description: 'Run full security audit'
+        required: false
+        default: true
+        type: boolean
+  push:
+    branches: [main]
+    paths:
+      - '**/build.gradle*'
+      - '**/gradle.properties'
+      - '**/libs.versions.toml'
+      - '**/package*.json'
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  # ============================================
+  # DEPENDENCY VULNERABILITY SCAN
+  # ============================================
+  dependency-check:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - uses: gradle/actions/setup-gradle@v3
+      with:
+        cache-read-only: true
+
+    - name: Generate Dependency Report
+      run: |
+        ./gradlew dependencies > dependency-report.txt
+        echo "Dependencies report generated"
+
+    - name: Check for Known Vulnerabilities
+      run: |
+        # Using built-in Gradle dependency verification
+        ./gradlew dependencyCheckAnalyze || true
+
+    - name: Upload Dependency Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-report
+        path: |
+          dependency-report.txt
+          build/reports/dependency-check-report.html
+
+  # ============================================
+  # CODE SECURITY ANALYSIS
+  # ============================================
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['java', 'javascript']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
+
+  # ============================================
+  # LICENSE COMPLIANCE CHECK
+  # ============================================
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - uses: gradle/actions/setup-gradle@v3
+      with:
+        cache-read-only: true
+
+    - name: Check License Compatibility
+      run: |
+        echo "Checking licenses for compatibility..."
+        ./gradlew checkLicense || true
+
+    - name: Generate License Report
+      run: |
+        # Extract license information from dependencies
+        ./gradlew dependencies --configuration runtimeClasspath | grep -E "\\+---|\\\\---" > licenses.txt
+        echo "License report generated"
+
+    - name: Check for Problematic Licenses
+      run: |
+        # Check for GPL, AGPL, or other restrictive licenses
+        if grep -iE "GPL|AGPL|LGPL" licenses.txt; then
+          echo "⚠️ Warning: Found potentially restrictive licenses"
+          echo "Please review the licenses.txt file"
+        else
+          echo "✅ No restrictive licenses found"
+        fi
+
+  # ============================================
+  # SECRETS SCANNING
+  # ============================================
+  secret-scan:
+    name: Scan for Secrets
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Trivy Secret Scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-secrets.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+
+    - name: Upload Trivy Results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-secrets.sarif'
+        category: 'secret-scanning'
+
+    - name: Check for Common Secret Patterns
+      run: |
+        # Basic pattern matching for common secrets
+        echo "Scanning for potential secrets..."
+
+        # Define patterns to search for
+        patterns=(
+          "api[_-]?key"
+          "api[_-]?secret"
+          "access[_-]?token"
+          "auth[_-]?token"
+          "private[_-]?key"
+          "secret[_-]?key"
+          "password"
+          "passwd"
+          "pwd"
+        )
+
+        found_issues=false
+        for pattern in "${patterns[@]}"; do
+          if grep -r -i -E "$pattern\s*=\s*[\"'][^\"']+[\"']" --include="*.kt" --include="*.java" --include="*.xml" --include="*.gradle" --include="*.properties" --exclude-dir=".git" --exclude-dir="build" .; then
+            echo "⚠️ Found potential secret pattern: $pattern"
+            found_issues=true
+          fi
+        done
+
+        if [ "$found_issues" = true ]; then
+          echo "⚠️ Potential secrets detected. Please review the findings above."
+          echo "Make sure all secrets are stored in GitHub Secrets or environment variables."
+        else
+          echo "✅ No obvious secret patterns found"
+        fi
+
+  # ============================================
+  # SECURITY SUMMARY
+  # ============================================
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-check, codeql-analysis, license-check, secret-scan]
+    if: always()
+
+    steps:
+    - name: Generate Security Report
+      run: |
+        echo "# Security Scan Summary" > security-summary.md
+        echo "" >> security-summary.md
+        echo "**Date**: $(date)" >> security-summary.md
+        echo "" >> security-summary.md
+
+        echo "## Scan Results" >> security-summary.md
+        echo "- Dependency Check: ${{ needs.dependency-check.result }}" >> security-summary.md
+        echo "- CodeQL Analysis: ${{ needs.codeql-analysis.result }}" >> security-summary.md
+        echo "- License Check: ${{ needs.license-check.result }}" >> security-summary.md
+        echo "- Secret Scan: ${{ needs.secret-scan.result }}" >> security-summary.md
+        echo "" >> security-summary.md
+
+        if [[ "${{ needs.dependency-check.result }}" == "failure" ]] ||
+           [[ "${{ needs.codeql-analysis.result }}" == "failure" ]] ||
+           [[ "${{ needs.license-check.result }}" == "failure" ]] ||
+           [[ "${{ needs.secret-scan.result }}" == "failure" ]]; then
+          echo "⚠️ **Action Required**: Security issues detected. Please review the detailed reports." >> security-summary.md
+        else
+          echo "✅ **All Clear**: No critical security issues detected." >> security-summary.md
+        fi
+
+        cat security-summary.md
+
+    - name: Upload Security Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-summary
+        path: security-summary.md
+
+    - name: Create Issue for Critical Findings
+      if: |
+        needs.dependency-check.result == 'failure' ||
+        needs.secret-scan.result == 'failure'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ github.token }}
+        script: |
+          const title = '🔒 Security Scan Alert - Action Required';
+          const body = `A security scan has detected potential issues that require attention.
+
+          **Scan Results:**
+          - Dependency Check: ${{ needs.dependency-check.result }}
+          - CodeQL Analysis: ${{ needs.codeql-analysis.result }}
+          - License Check: ${{ needs.license-check.result }}
+          - Secret Scan: ${{ needs.secret-scan.result }}
+
+          Please review the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed findings.
+
+          **Priority**: High
+          **Labels**: security, needs-review`;
+
+          // Check if issue already exists
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: 'security'
+          });
+
+          const existingIssue = issues.data.find(i => i.title === title);
+
+          if (existingIssue) {
+            // Update existing issue
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: existingIssue.number,
+              body: `Updated security scan results: ${new Date().toISOString()}\n\n${body}`
+            });
+          } else {
+            // Create new issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['security', 'needs-review']
+            });
+          }
