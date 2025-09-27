@@ -29,6 +29,13 @@ START_TIME=$(date +%s)
 echo -e "${CYAN}🚀 Running optimized pre-push validation...${NC}"
 echo -e "${BLUE}⏱️  Max execution time: ${MAX_EXECUTION_TIME}s, Parallel jobs: ${PARALLEL_JOBS}${NC}"
 
+# Validate Gradle wrapper exists
+if [ ! -f "./gradlew" ]; then
+    echo -e "${RED}❌ Gradle wrapper (./gradlew) not found!${NC}"
+    echo "  Please ensure the project has a valid Gradle wrapper"
+    exit 1
+fi
+
 # Function to check elapsed time
 check_timeout() {
     local current_time=$(date +%s)
@@ -67,7 +74,16 @@ check_gradle_task() {
     mkdir -p "$CACHE_DIR"
 
     # Update cache if it's older than 1 hour or doesn't exist
-    if [ ! -f "$cache_file" ] || [ $(($(date +%s) - $(stat -f %m "$cache_file" 2>/dev/null || echo 0))) -gt 3600 ]; then
+    # Cross-platform stat command for file modification time
+    if [ ! -f "$cache_file" ]; then
+        cache_mtime=0
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        cache_mtime=$(stat -f %m "$cache_file" 2>/dev/null || echo 0)
+    else
+        cache_mtime=$(stat -c %Y "$cache_file" 2>/dev/null || echo 0)
+    fi
+
+    if [ ! -f "$cache_file" ] || [ $(($(date +%s) - cache_mtime)) -gt 3600 ]; then
         echo -e "${BLUE}🔄 Updating Gradle task cache...${NC}"
         ./gradlew tasks --all 2>/dev/null | grep "^[a-zA-Z]" > "$cache_file" || touch "$cache_file"
     fi
@@ -83,11 +99,16 @@ run_parallel() {
 
     echo -e "${BLUE}🔄 Running ${#tasks[@]} tasks in parallel...${NC}"
 
+    # Create temp directory for results
+    local temp_dir=$(mktemp -d)
+    # Ensure cleanup on exit
+    trap "rm -rf '$temp_dir'" EXIT
+
     # Start all tasks
     for i in "${!tasks[@]}"; do
         {
             eval "${tasks[$i]}"
-            echo $? > "/tmp/task_result_$i"
+            echo $? > "$temp_dir/task_result_$i"
         } &
         pids[$i]=$!
         echo -e "${CYAN}  Started task $((i+1)): ${tasks[$i]:0:50}...${NC}"
@@ -114,10 +135,8 @@ run_parallel() {
             results[$i]=124  # timeout exit code
         else
             wait "${pids[$i]}"
-            results[$i]=$(cat "/tmp/task_result_$i" 2>/dev/null || echo 1)
+            results[$i]=$(cat "$temp_dir/task_result_$i" 2>/dev/null || echo 1)
         fi
-
-        rm -f "/tmp/task_result_$i"
     done
 
     # Check results
@@ -130,6 +149,9 @@ run_parallel() {
             echo -e "${GREEN}✅ Task $((i+1)) completed successfully${NC}"
         fi
     done
+
+    # Clean up temp directory
+    rm -rf "$temp_dir"
 
     return $failed
 }
@@ -209,19 +231,24 @@ if ! should_skip_check "lint-checks"; then
     # Prepare parallel tasks
     parallel_tasks=()
 
+    # Create temp directory for lint results
+    local lint_temp_dir=$(mktemp -d)
+    # Ensure cleanup on exit
+    trap "rm -rf '$lint_temp_dir'" EXIT
+
     # Add lint task if available
     if check_gradle_task "lint"; then
-        parallel_tasks+=("./gradlew lint --continue > /tmp/lint_result 2>&1")
+        parallel_tasks+=("./gradlew lint --continue > $lint_temp_dir/lint_result 2>&1")
     fi
 
     # Add detekt task if available
     if check_gradle_task "detekt"; then
-        parallel_tasks+=("./gradlew detekt --continue > /tmp/detekt_result 2>&1")
+        parallel_tasks+=("./gradlew detekt --continue > $lint_temp_dir/detekt_result 2>&1")
     fi
 
     # Add ktlint-like checks via spotless if available
     if check_gradle_task "spotlessCheck"; then
-        parallel_tasks+=("./gradlew spotlessCheck --continue > /tmp/spotless_result 2>&1")
+        parallel_tasks+=("./gradlew spotlessCheck --continue > $lint_temp_dir/spotless_result 2>&1")
     fi
 
     # Check merge conflicts
@@ -232,26 +259,26 @@ if ! should_skip_check "lint-checks"; then
             echo -e "${RED}❌ Some linting checks failed!${NC}"
 
             # Show relevant error outputs
-            if [ -f "/tmp/lint_result" ]; then
+            if [ -f "$lint_temp_dir/lint_result" ]; then
                 echo -e "${YELLOW}Lint output:${NC}"
-                tail -20 /tmp/lint_result
+                tail -20 "$lint_temp_dir/lint_result"
             fi
-            if [ -f "/tmp/detekt_result" ]; then
+            if [ -f "$lint_temp_dir/detekt_result" ]; then
                 echo -e "${YELLOW}Detekt output:${NC}"
-                tail -20 /tmp/detekt_result
+                tail -20 "$lint_temp_dir/detekt_result"
             fi
-            if [ -f "/tmp/spotless_result" ]; then
+            if [ -f "$lint_temp_dir/spotless_result" ]; then
                 echo -e "${YELLOW}Spotless output:${NC}"
-                tail -20 /tmp/spotless_result
+                tail -20 "$lint_temp_dir/spotless_result"
             fi
 
             # Clean up temp files
-            rm -f /tmp/*_result
+            rm -rf "$lint_temp_dir"
             exit 1
         fi
 
         # Clean up temp files
-        rm -f /tmp/*_result
+        rm -rf "$lint_temp_dir"
     fi
 
     echo -e "${GREEN}✅ Linting checks passed${NC}"
@@ -264,19 +291,24 @@ if ! should_skip_check "compilation"; then
 
     compilation_tasks=()
 
+    # Create temp directory for compilation results
+    local compile_temp_dir=$(mktemp -d)
+    # Ensure cleanup on exit
+    trap "rm -rf '$compile_temp_dir'" EXIT
+
     # Android compilation
     if check_gradle_task "compileDebugKotlinAndroid"; then
-        compilation_tasks+=("./gradlew compileDebugKotlinAndroid --continue > /tmp/android_compile 2>&1")
+        compilation_tasks+=("./gradlew compileDebugKotlinAndroid --continue > $compile_temp_dir/android_compile 2>&1")
     fi
 
     # JS compilation
     if check_gradle_task "compileKotlinJs"; then
-        compilation_tasks+=("./gradlew compileKotlinJs --continue > /tmp/js_compile 2>&1")
+        compilation_tasks+=("./gradlew compileKotlinJs --continue > $compile_temp_dir/js_compile 2>&1")
     fi
 
     # Common compilation
     if check_gradle_task "compileCommonMainKotlinMetadata"; then
-        compilation_tasks+=("./gradlew compileCommonMainKotlinMetadata --continue > /tmp/common_compile 2>&1")
+        compilation_tasks+=("./gradlew compileCommonMainKotlinMetadata --continue > $compile_temp_dir/common_compile 2>&1")
     fi
 
     if [ ${#compilation_tasks[@]} -gt 0 ]; then
@@ -284,18 +316,18 @@ if ! should_skip_check "compilation"; then
             echo -e "${RED}❌ Compilation failed!${NC}"
 
             # Show compilation errors
-            for result_file in /tmp/*_compile; do
+            for result_file in "$compile_temp_dir"/*_compile; do
                 if [ -f "$result_file" ]; then
                     echo -e "${YELLOW}$(basename "$result_file" | sed 's/_compile//')${NC} compilation output:"
                     tail -20 "$result_file"
                 fi
             done
 
-            rm -f /tmp/*_compile
+            rm -rf "$compile_temp_dir"
             exit 1
         fi
 
-        rm -f /tmp/*_compile
+        rm -rf "$compile_temp_dir"
     fi
 
     echo -e "${GREEN}✅ Compilation checks passed${NC}"
@@ -308,19 +340,24 @@ if ! should_skip_check "unit-tests"; then
 
     test_tasks=()
 
+    # Create temp directory for test results
+    local test_temp_dir=$(mktemp -d)
+    # Ensure cleanup on exit
+    trap "rm -rf '$test_temp_dir'" EXIT
+
     # Android unit tests
     if check_gradle_task "testDebugUnitTest"; then
-        test_tasks+=("./gradlew testDebugUnitTest --continue > /tmp/android_test 2>&1")
+        test_tasks+=("./gradlew testDebugUnitTest --continue > $test_temp_dir/android_test 2>&1")
     fi
 
     # JS tests
     if check_gradle_task "jsTest"; then
-        test_tasks+=("./gradlew jsTest --continue > /tmp/js_test 2>&1")
+        test_tasks+=("./gradlew jsTest --continue > $test_temp_dir/js_test 2>&1")
     fi
 
     # Common tests
     if check_gradle_task "allTests"; then
-        test_tasks+=("./gradlew allTests --continue > /tmp/common_test 2>&1")
+        test_tasks+=("./gradlew allTests --continue > $test_temp_dir/common_test 2>&1")
     fi
 
     if [ ${#test_tasks[@]} -gt 0 ]; then
@@ -328,18 +365,18 @@ if ! should_skip_check "unit-tests"; then
             echo -e "${RED}❌ Unit tests failed!${NC}"
 
             # Show test failures
-            for result_file in /tmp/*_test; do
+            for result_file in "$test_temp_dir"/*_test; do
                 if [ -f "$result_file" ]; then
                     echo -e "${YELLOW}$(basename "$result_file" | sed 's/_test//')${NC} test output:"
                     grep -A 5 -B 5 "FAILED\|ERROR" "$result_file" | tail -20
                 fi
             done
 
-            rm -f /tmp/*_test
+            rm -rf "$test_temp_dir"
             exit 1
         fi
 
-        rm -f /tmp/*_test
+        rm -rf "$test_temp_dir"
     fi
 
     echo -e "${GREEN}✅ Unit tests passed${NC}"

@@ -91,12 +91,17 @@ fi
 if [ -n "$KOTLIN_FILES" ] && ! should_skip_check "kotlin-lint"; then
     echo -e "${PURPLE}📝 Kotlin linting and formatting...${NC}"
 
+    # Check if Gradle wrapper exists
+    if [ ! -f "./gradlew" ]; then
+        echo -e "${YELLOW}⚠️  Gradle wrapper not found, skipping detekt${NC}"
     # Check if Detekt is available
-    if ./gradlew tasks --all 2>/dev/null | grep -q "detekt "; then
+    elif ./gradlew tasks --all 2>/dev/null | grep -q "detekt "; then
         echo "    Running Detekt static analysis..."
 
         # Create temp config for staged files only
         TEMP_DETEKT_CONFIG=$(mktemp)
+        # Ensure cleanup on exit
+        trap 'rm -f "$TEMP_DETEKT_CONFIG"' EXIT
         cat > "$TEMP_DETEKT_CONFIG" << EOF
 detekt:
   input: $(echo "$KOTLIN_FILES" | tr '\n' ',' | sed 's/,$//')
@@ -124,7 +129,12 @@ EOF
             if grep -q $'\t' "$file"; then
                 if [ "$ENABLE_AUTO_FIX" = true ]; then
                     echo "    Auto-fixing tabs in $file"
-                    sed -i '' 's/\t/    /g' "$file"
+                    # Cross-platform sed for tab replacement
+                    if [[ "$OSTYPE" == "darwin"* ]]; then
+                        sed -i '' 's/\t/    /g' "$file"
+                    else
+                        sed -i 's/\t/    /g' "$file"
+                    fi
                     git add "$file"
                 else
                     echo -e "${YELLOW}⚠️  Warning: Found tabs in $file (use spaces)${NC}"
@@ -135,7 +145,12 @@ EOF
             if grep -q " $" "$file"; then
                 if [ "$ENABLE_AUTO_FIX" = true ]; then
                     echo "    Auto-fixing trailing whitespace in $file"
-                    sed -i '' 's/[[:space:]]*$//' "$file"
+                    # Cross-platform sed for trailing whitespace
+                    if [[ "$OSTYPE" == "darwin"* ]]; then
+                        sed -i '' 's/[[:space:]]*$//' "$file"
+                    else
+                        sed -i 's/[[:space:]]*$//' "$file"
+                    fi
                     git add "$file"
                 else
                     echo -e "${YELLOW}⚠️  Warning: Trailing whitespace in $file${NC}"
@@ -285,13 +300,16 @@ fi
 if [ "$QUICK_BUILD_CHECK" = "true" ] && ! should_skip_check "build"; then
     echo -e "${PURPLE}🔨 Quick build validation...${NC}"
 
-    if ! ./gradlew compileDebugKotlinAndroid compileKotlinJs --continue > /dev/null 2>&1; then
+    # Ensure gradlew exists before build check
+    if [ ! -f "./gradlew" ]; then
+        echo -e "${YELLOW}⚠️  Gradle wrapper not found, skipping build check${NC}"
+    elif ! ./gradlew compileDebugKotlinAndroid compileKotlinJs --continue > /dev/null 2>&1; then
         echo -e "${RED}❌ Build compilation failed!${NC}"
         echo "  Run './gradlew build' to see detailed errors"
         exit 1
+    else
+        echo "    ✓ Build validation passed"
     fi
-
-    echo "    ✓ Build validation passed"
 fi
 
 # Summary

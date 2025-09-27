@@ -108,7 +108,13 @@ show_status() {
         echo -e "  📁 Cache directory: ${GREEN}present${NC} (${cache_size})"
 
         if [ -f "$HOOK_CACHE_DIR/gradle-tasks" ]; then
-            cache_age=$((($(date +%s) - $(stat -f %m "$HOOK_CACHE_DIR/gradle-tasks" 2>/dev/null || echo 0)) / 3600))
+            # Cross-platform stat command for file modification time
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                cache_mtime=$(stat -f %m "$HOOK_CACHE_DIR/gradle-tasks" 2>/dev/null || echo 0)
+            else
+                cache_mtime=$(stat -c %Y "$HOOK_CACHE_DIR/gradle-tasks" 2>/dev/null || echo 0)
+            fi
+            cache_age=$((($(date +%s) - cache_mtime) / 3600))
             echo -e "    Gradle tasks cache: ${cache_age}h old"
         fi
 
@@ -346,8 +352,8 @@ clean_cache() {
         echo "  ✓ Cleared cache directory ($cache_size freed)"
     fi
 
-    # Clean temporary files
-    rm -f /tmp/*_result /tmp/*_compile /tmp/*_test 2>/dev/null || true
+    # Clean temporary files (using claude temp directory per project setup)
+    rm -f /tmp/claude/*_result /tmp/claude/*_compile /tmp/claude/*_test 2>/dev/null || true
     echo "  ✓ Cleaned temporary files"
 
     # Recreate cache structure
