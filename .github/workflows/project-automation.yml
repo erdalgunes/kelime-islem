@@ -15,11 +15,13 @@ permissions:
   issues: write
   pull-requests: read
   discussions: write
-  projects: write
+  repository-projects: write  # Correct scope for project board operations
 
 env:
-  PROJECT_ID: ${{ vars.PROJECT_ID || 'PVT_kwHOADr0ls4BELXk' }}
-  PROJECT_URL: ${{ vars.PROJECT_URL || 'https://github.com/users/erdalgunes/projects/12' }}
+  # Project configuration - must be set as repository variables
+  # To find PROJECT_ID: Go to your project → Settings → Copy the project ID
+  PROJECT_ID: ${{ vars.PROJECT_ID }}
+  PROJECT_URL: ${{ vars.PROJECT_URL }}
 
 # Note: GraphQL queries could be optimized by batching field queries with addProjectV2ItemById
 # mutations in a single request. Consider implementing a reusable composite action for common
@@ -29,8 +31,15 @@ jobs:
   add-to-project:
     name: Add to Project Board
     runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && github.event.action == 'opened'
+    if: github.event_name == 'issues' && github.event.action == 'opened' && vars.PROJECT_URL != ''
     steps:
+      - name: Validate configuration
+        run: |
+          if [ -z "${{ vars.PROJECT_URL }}" ]; then
+            echo "::error::PROJECT_URL is not configured. Please set it in repository variables."
+            exit 1
+          fi
+
       - name: Add issue to project
         uses: actions/add-to-project@v1.0.2
         with:
@@ -40,7 +49,7 @@ jobs:
   move-to-in-progress:
     name: Move to In Progress
     runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && github.event.action == 'assigned'
+    if: github.event_name == 'issues' && github.event.action == 'assigned' && vars.PROJECT_ID != ''
     steps:
       - name: Move issue to In Progress
         uses: actions/github-script@v7
@@ -48,6 +57,12 @@ jobs:
           script: |
             const projectId = '${{ env.PROJECT_ID }}';
             const itemId = '${{ github.event.issue.node_id }}';
+
+            // Validate project configuration
+            if (!projectId) {
+              core.setFailed('PROJECT_ID is not configured. Please set it in repository variables.');
+              return;
+            }
 
             // Helper function to retry operations with exponential backoff
             async function retryWithBackoff(operation, maxRetries = 3) {
@@ -92,7 +107,7 @@ jobs:
                 query($projectId: ID!) {
                   node(id: $projectId) {
                     ... on ProjectV2 {
-                      fields(first: 20) {
+                      fields(first: 50) {  # Increased to avoid missing fields on larger projects
                         nodes {
                           ... on ProjectV2SingleSelectField {
                             id
@@ -206,7 +221,7 @@ jobs:
                 query($projectId: ID!) {
                   node(id: $projectId) {
                     ... on ProjectV2 {
-                      fields(first: 20) {
+                      fields(first: 50) {  # Increased to avoid missing fields on larger projects
                         nodes {
                           ... on ProjectV2SingleSelectField {
                             id

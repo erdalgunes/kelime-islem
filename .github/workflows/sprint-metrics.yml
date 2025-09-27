@@ -134,8 +134,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const startDate = new Date('${{ steps.dates.outputs.start_date }}');
-            const endDate = new Date('${{ steps.dates.outputs.end_date }}');
+            // Parse dates with explicit times to ensure full day inclusion
+            // startDate: beginning of day (00:00:00.000Z)
+            // endDate: end of day (23:59:59.999Z) to include all events on the last day
+            const startDate = new Date('${{ steps.dates.outputs.start_date }}T00:00:00.000Z');
+            const endDate = new Date('${{ steps.dates.outputs.end_date }}T23:59:59.999Z');
 
             const prs = await github.paginate(github.rest.pulls.list, {
               owner: context.repo.owner,
@@ -232,18 +235,24 @@ jobs:
         with:
           script: |
             const sprint = ${{ steps.dates.outputs.sprint_number }};
-            const startDate = new Date('${{ steps.dates.outputs.start_date }}');
-            const endDate = new Date('${{ steps.dates.outputs.end_date }}');
+            // Parse dates with explicit times to ensure full day inclusion
+            // startDate: beginning of day (00:00:00.000Z)
+            // endDate: end of day (23:59:59.999Z) to include all events on the last day
+            const startDate = new Date('${{ steps.dates.outputs.start_date }}T00:00:00.000Z');
+            const endDate = new Date('${{ steps.dates.outputs.end_date }}T23:59:59.999Z');
 
-            // Get all events for sprint issues
+            // Get all events for sprint issues (excluding PRs)
             const sprintLabel = `sprint/${sprint}`;
-            const issues = await github.paginate(github.rest.issues.listForRepo, {
+            const items = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               labels: sprintLabel,
               state: 'all',
               per_page: 100
             });
+
+            // Filter out pull requests from the dataset (they have a pull_request property)
+            const issues = items.filter(i => !i.pull_request);
 
             // Create daily burndown
             const burndown = [];
