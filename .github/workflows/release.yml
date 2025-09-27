@@ -64,7 +64,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Run all tests
-      run: ./gradlew test
+      run: ./gradlew :composeApp:testDebugUnitTest :composeApp:jsNodeTest
 
     - name: Verify coverage threshold
       run: |
@@ -103,18 +103,6 @@ jobs:
             task: :composeApp:assembleRelease
             artifact-name: android-release
             artifact-path: composeApp/build/outputs/apk/release/*.apk
-
-          - platform: desktop
-            os: ubuntu-latest
-            task: :composeApp:packageReleaseDistributionForCurrentOS
-            artifact-name: desktop-release-linux
-            artifact-path: composeApp/build/compose/binaries/main/**/*
-
-          - platform: desktop-mac
-            os: macos-latest
-            task: :composeApp:packageReleaseDistributionForCurrentOS
-            artifact-name: desktop-release-macos
-            artifact-path: composeApp/build/compose/binaries/main/**/*
 
           - platform: web
             os: ubuntu-latest
@@ -205,10 +193,8 @@ jobs:
         prerelease: ${{ contains(needs.quality-gates.outputs.version, 'beta') || contains(needs.quality-gates.outputs.version, 'alpha') }}
         files: |
           release-artifacts/**/*.apk
-          release-artifacts/**/*.dmg
-          release-artifacts/**/*.deb
-          release-artifacts/**/*.exe
           release-artifacts/**/*.tar.gz
+          release-artifacts/**/*.zip
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Update documentation

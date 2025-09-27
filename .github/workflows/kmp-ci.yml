@@ -51,7 +51,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Run lint checks
-      run: ./gradlew lint --continue
+      run: ./gradlew :composeApp:lint --continue
       continue-on-error: true
 
     - name: Upload lint reports
@@ -158,7 +158,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Run tests with coverage
-      run: ./gradlew testDebugUnitTest koverXmlReport koverHtmlReport
+      run: ./gradlew :composeApp:testDebugUnitTest koverXmlReport koverHtmlReport
 
     - name: Verify coverage threshold
       run: ./gradlew koverVerify

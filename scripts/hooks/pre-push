@@ -36,7 +36,6 @@ check_gradle_task() {
             return 1
         fi
     fi
-    fi
     return 0
 }
 
@@ -83,12 +82,19 @@ fi
 
 # 4. Extract and validate all Gradle tasks from workflows
 echo -e "${YELLOW}🔨 Validating Gradle tasks in workflows...${NC}"
-WORKFLOW_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
+# Extract tasks from gradlew commands and matrix task definitions
+DIRECT_TASKS=$(find .github/workflows -name "*.yml" -exec grep -h "gradlew" {} \; 2>/dev/null | \
     grep -oE "gradlew\s+[a-zA-Z0-9:_-]+(\s|$)" | \
     sed 's/gradlew\s*//' | \
     sed 's/\s*$//' | \
-    tr -d '\r' | \
-    sort -u || true)
+    tr -d '\r' || true)
+
+MATRIX_TASKS=$(find .github/workflows -name "*.yml" -exec grep -h "task:" {} \; 2>/dev/null | \
+    sed 's/.*task:\s*//' | \
+    sed 's/\s*$//' | \
+    tr -d '\r' || true)
+
+WORKFLOW_TASKS=$(echo -e "$DIRECT_TASKS\n$MATRIX_TASKS" | sort -u | grep -v "^$" || true)
 
 INVALID_TASKS=""
 for task in $WORKFLOW_TASKS; do
