@@ -13,12 +13,27 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Running pre-push CI validation...${NC}"
 
+# Cache file for Gradle tasks
+CACHE_FILE=".gradle/task-cache"
+
 # Function to check if a Gradle task exists
 check_gradle_task() {
     local task=$1
-    if ! ./gradlew tasks --all 2>/dev/null | grep -q "^$task "; then
-        echo -e "${RED}❌ Gradle task '$task' not found!${NC}"
-        return 1
+    # Normalize task name - remove leading colon for cache lookup
+    local normalized_task="${task#:}"
+    
+    # Use cache if available and fresh
+    if [ -f "$CACHE_FILE" ] && is_cache_fresh; then
+        if ! grep -q "^$normalized_task " "$CACHE_FILE" 2>/dev/null; then
+            echo -e "${RED}❌ Gradle task '$task' not found!${NC}" >&2
+            return 1
+        fi
+    else
+        # Fall back to direct query (use normalized task for consistency)
+        if ! ./gradlew tasks --all 2>/dev/null | grep -q "^$normalized_task "; then
+            echo -e "${RED}❌ Gradle task '$task' not found!${NC}" >&2
+            return 1
+        fi
     fi
     return 0
 }
@@ -43,10 +58,31 @@ if [ -f scripts/validate-action-versions.sh ]; then
     fi
 fi
 
-# 3. Extract and validate all Gradle tasks from workflows
+# 3. Check cache freshness (portable way)
+is_cache_fresh() {
+    python3 -c "
+import os, sys, time
+cache_file = '$CACHE_FILE'
+if not os.path.exists(cache_file):
+    sys.exit(1)
+mtime = os.path.getmtime(cache_file)
+now = time.time()
+fresh = (now - mtime) < 3600
+sys.exit(0 if fresh else 1)
+" 2>/dev/null
+}
+
+# Refresh cache if needed
+if ! is_cache_fresh; then
+    echo -e "${YELLOW}🔄 Refreshing Gradle task cache...${NC}"
+    mkdir -p "$(dirname "$CACHE_FILE")"
+    ./gradlew tasks --all > "$CACHE_FILE" 2>/dev/null || true
+fi
+
+# 4. Extract and validate all Gradle tasks from workflows
 echo -e "${YELLOW}🔨 Validating Gradle tasks in workflows...${NC}"
 WORKFLOW_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
-    grep -oE "gradlew\s+[a-zA-Z:]+(\s|$)" | \
+    grep -oE "gradlew\s+[a-zA-Z0-9:_-]+(\s|$)" | \
     sed 's/gradlew\s*//' | \
     sed 's/\s*$//' | \
     tr -d '\r' | \
