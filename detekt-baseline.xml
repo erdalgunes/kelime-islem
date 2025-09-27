@@ -1,0 +1,144 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComposableParamOrder:MinimalCountdown.kt$AnimatedCountdownDemo</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt$LocalAccessibilityMode</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt$LocalGameShowColors</ID>
+    <ID>CompositionLocalAllowlist:Theme.kt$LocalTurkishTypography</ID>
+    <ID>CyclomaticComplexMethod:LetterTile.kt$@Composable fun LetterTile( letter: Char, modifier: Modifier = Modifier, state: LetterTileState = LetterTileState.Available, points: Int? = null, size: LetterTileSize = LetterTileSize.Standard, onClick: ((Char) -&gt; Unit)? = null, hapticEnabled: Boolean = true )</ID>
+    <ID>CyclomaticComplexMethod:MinimalCountdown.kt$@Composable fun MinimalCountdown( totalSeconds: Int, currentSeconds: Int, modifier: Modifier = Modifier, size: CountdownSize = CountdownSize.Medium, showWarningEffects: Boolean = true, onTimeUp: (() -&gt; Unit)? = null )</ID>
+    <ID>EmptyKtFile:ScoreDisplay.kt$.ScoreDisplay.kt</ID>
+    <ID>EmptyKtFile:WordGrid.kt$.WordGrid.kt</ID>
+    <ID>FunctionOnlyReturningConstant:Motion.kt$AccessibilityMotion$fun shouldReduceMotion(): Boolean</ID>
+    <ID>FunctionOnlyReturningConstant:Theme.kt$fun supportsDynamicTheming()</ID>
+    <ID>LambdaParameterInRestartableEffect:MinimalCountdown.kt$onTimeUp</ID>
+    <ID>LongMethod:Main.kt$@Composable fun MerhabaWereldWebApp()</ID>
+    <ID>LongParameterList:LetterTile.kt$( letter: Char, modifier: Modifier = Modifier, state: LetterTileState = LetterTileState.Available, points: Int? = null, size: LetterTileSize = LetterTileSize.Standard, onClick: ((Char) -&gt; Unit)? = null, hapticEnabled: Boolean = true )</ID>
+    <ID>LongParameterList:MinimalCountdown.kt$( totalSeconds: Int, currentSeconds: Int, modifier: Modifier = Modifier, size: CountdownSize = CountdownSize.Medium, showWarningEffects: Boolean = true, onTimeUp: (() -&gt; Unit)? = null )</ID>
+    <ID>LongParameterList:SimpleGameButton.kt$( text: String, onClick: () -&gt; Unit, modifier: Modifier = Modifier, style: GameButtonStyle = GameButtonStyle.Primary, enabled: Boolean = true, icon: ImageVector? = null, hapticEnabled: Boolean = true )</ID>
+    <ID>LongParameterList:WordBoard.kt$( word: String, modifier: Modifier = Modifier, style: WordBoardStyle = WordBoardStyle(), state: WordBoardState = WordBoardState.Normal, showLetters: Boolean = true, animateEntry: Boolean = true, onWordClick: (() -&gt; Unit)? = null )</ID>
+    <ID>MagicNumber:AppConfiguration.kt$AppConfigUtils$20f</ID>
+    <ID>MagicNumber:AppPresenter.kt$AppPresenter$300_000L</ID>
+    <ID>MagicNumber:ContentManager.kt$ContentManager$100</ID>
+    <ID>MagicNumber:PerformanceMonitor.kt$PerformanceMonitor$100</ID>
+    <ID>MagicNumber:PerformanceMonitor.kt$PerformanceMonitor$1000</ID>
+    <ID>MatchingDeclarationName:Platform.android.kt$AndroidPlatform : Platform</ID>
+    <ID>MatchingDeclarationName:Platform.js.kt$JSPlatform : Platform</ID>
+    <ID>MayBeConst:Elevation.kt$AccessibilityElevation$/** * High contrast elevation adjustments */ val HighContrastMultiplier = 1.5f</ID>
+    <ID>ModifierMissing:Main.kt$MerhabaWereldWebApp</ID>
+    <ID>MultipleEmitters:SimpleGameButton.kt$ButtonContent</ID>
+    <ID>NewLineAtEndOfFile:App.kt$com.erdalgunes.kelimeislem.App.kt</ID>
+    <ID>NewLineAtEndOfFile:AppConfiguration.kt$com.erdalgunes.kelimeislem.AppConfiguration.kt</ID>
+    <ID>NewLineAtEndOfFile:AppPresenter.kt$com.erdalgunes.kelimeislem.presentation.AppPresenter.kt</ID>
+    <ID>NewLineAtEndOfFile:AppScreen.kt$com.erdalgunes.kelimeislem.ui.AppScreen.kt</ID>
+    <ID>NewLineAtEndOfFile:AppViewModel.kt$com.erdalgunes.kelimeislem.AppViewModel.kt</ID>
+    <ID>NewLineAtEndOfFile:Color.kt$com.erdalgunes.kelimeislem.designsystem.theme.Color.kt</ID>
+    <ID>NewLineAtEndOfFile:ContentManager.kt$com.erdalgunes.kelimeislem.ContentManager.kt</ID>
+    <ID>NewLineAtEndOfFile:Elevation.kt$com.erdalgunes.kelimeislem.designsystem.tokens.Elevation.kt</ID>
+    <ID>NewLineAtEndOfFile:Greeting.kt$com.erdalgunes.kelimeislem.Greeting.kt</ID>
+    <ID>NewLineAtEndOfFile:Main.kt$.Main.kt</ID>
+    <ID>NewLineAtEndOfFile:MerhabaWereldPresenter.kt$.MerhabaWereldPresenter.kt</ID>
+    <ID>NewLineAtEndOfFile:Motion.kt$com.erdalgunes.kelimeislem.designsystem.tokens.Motion.kt</ID>
+    <ID>NewLineAtEndOfFile:PerformanceMonitor.kt$com.kelimeislem.utils.PerformanceMonitor.kt</ID>
+    <ID>NewLineAtEndOfFile:Platform.android.kt$com.erdalgunes.kelimeislem.Platform.android.kt</ID>
+    <ID>NewLineAtEndOfFile:Platform.js.kt$com.erdalgunes.kelimeislem.Platform.js.kt</ID>
+    <ID>NewLineAtEndOfFile:Spacing.kt$com.erdalgunes.kelimeislem.designsystem.tokens.Spacing.kt</ID>
+    <ID>NewLineAtEndOfFile:Theme.kt$com.erdalgunes.kelimeislem.designsystem.theme.Theme.kt</ID>
+    <ID>NewLineAtEndOfFile:TimeProvider.kt$.TimeProvider.kt</ID>
+    <ID>NewLineAtEndOfFile:Typography.kt$com.erdalgunes.kelimeislem.designsystem.theme.Typography.kt</ID>
+    <ID>PreviewPublic:App.kt$App</ID>
+    <ID>TooManyFunctions:Theme.kt$GameShowSemanticColors</ID>
+    <ID>UndocumentedPublicClass:AppConfiguration.kt$AppConfiguration$Companion</ID>
+    <ID>UndocumentedPublicClass:AppConfiguration.kt$TextConfiguration$Companion</ID>
+    <ID>UndocumentedPublicClass:AppConfiguration.kt$TextConfiguration$TextStyle</ID>
+    <ID>UndocumentedPublicClass:AppViewModel.kt$AppUiState</ID>
+    <ID>UndocumentedPublicClass:AppViewModel.kt$AppViewModel</ID>
+    <ID>UndocumentedPublicClass:Greeting.kt$Greeting</ID>
+    <ID>UndocumentedPublicClass:Greeting.kt$Platform</ID>
+    <ID>UndocumentedPublicClass:MerhabaWereldPresenter.kt$MerhabaWereldEvent</ID>
+    <ID>UndocumentedPublicClass:MerhabaWereldPresenter.kt$MerhabaWereldEvent$Clicked : MerhabaWereldEvent</ID>
+    <ID>UndocumentedPublicClass:MerhabaWereldPresenter.kt$MerhabaWereldEvent$Reset : MerhabaWereldEvent</ID>
+    <ID>UndocumentedPublicClass:MerhabaWereldPresenter.kt$MerhabaWereldPresenter</ID>
+    <ID>UndocumentedPublicClass:MerhabaWereldPresenter.kt$MerhabaWereldState</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$AppConfigUtils$fun calculateTotalPadding(config: AppConfiguration): Dp</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$AppConfigUtils$fun isTabletConfiguration(config: AppConfiguration): Boolean</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$AppConfigUtils$fun mergeConfigurations( base: AppConfiguration, override: AppConfiguration? ): AppConfiguration</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$AppConfigUtils$fun shouldShowDebugInfo(config: AppConfiguration): Boolean</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$AppConfigUtils$fun validateConfiguration(config: AppConfiguration): Boolean</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$AppConfiguration.Companion$fun debug()</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$AppConfiguration.Companion$fun default()</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$AppConfiguration.Companion$fun tablet()</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$TextConfiguration.Companion$fun default()</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$TextConfiguration.Companion$fun largeText()</ID>
+    <ID>UndocumentedPublicFunction:AppConfiguration.kt$TextConfiguration.Companion$fun leftAligned()</ID>
+    <ID>UndocumentedPublicFunction:AppViewModel.kt$AppViewModel$fun getContentResult(): ContentResult</ID>
+    <ID>UndocumentedPublicFunction:AppViewModel.kt$AppViewModel$fun getDebugInfo(config: AppConfiguration): String</ID>
+    <ID>UndocumentedPublicFunction:AppViewModel.kt$AppViewModel$fun refresh()</ID>
+    <ID>UndocumentedPublicFunction:AppViewModel.kt$AppViewModel$fun shouldAutoRefresh(): Boolean</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentManager$fun formatGreeting(message: String, platform: String): String</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentManager$fun generateDebugInfo( uiState: AppUiState, config: AppConfiguration ): String</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentManager$fun processContent( greeting: String, title: String, config: TextConfiguration = TextConfiguration.default() ): ContentResult</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentManager$fun shouldRefreshContent( lastUpdateTime: Long, currentTime: Long, refreshInterval: Long = 60_000L // 1 minute ): Boolean</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentManager$fun validateTitle(title: String): Boolean</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentResult$fun hasContent(): Boolean</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentResult$fun toDisplayString(): String</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentUtils$fun countWords(text: String): Int</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentUtils$fun createPlaceholderContent(): ContentResult</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentUtils$fun extractPlatformFromGreeting(greeting: String): String?</ID>
+    <ID>UndocumentedPublicFunction:ContentManager.kt$ContentUtils$fun truncateText(text: String, maxLength: Int = 50): String</ID>
+    <ID>UndocumentedPublicFunction:Greeting.kt$Greeting$fun greet(): String</ID>
+    <ID>UndocumentedPublicFunction:Greeting.kt$expect fun getPlatform(): Platform</ID>
+    <ID>UndocumentedPublicFunction:Main.kt$@Composable fun MerhabaWereldWebApp()</ID>
+    <ID>UndocumentedPublicFunction:Main.kt$fun main()</ID>
+    <ID>UndocumentedPublicFunction:MerhabaWereldPresenter.kt$MerhabaWereldPresenter$fun handleEvent(event: MerhabaWereldEvent)</ID>
+    <ID>UndocumentedPublicFunction:PerformanceMonitor.kt$PerformanceMonitor.Checkpoint$fun finish()</ID>
+    <ID>UndocumentedPublicFunction:PerformanceMonitor.kt$PerformanceMonitor.Checkpoint$fun mark(stageName: String)</ID>
+    <ID>UndocumentedPublicFunction:Platform.android.kt$actual fun getPlatform(): Platform</ID>
+    <ID>UndocumentedPublicFunction:Platform.js.kt$actual fun getPlatform(): Platform</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$AppConfiguration$val debugMode: Boolean = false</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$AppConfiguration$val enableAnimations: Boolean = true</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$AppConfiguration$val padding: Dp = 16.dp</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$AppConfiguration$val spaceBetweenElements: Dp = 16.dp</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$TextConfiguration$val centerAlign: Boolean = true</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$TextConfiguration$val greetingStyle: TextStyle = TextStyle.Headline</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$TextConfiguration$val titleStyle: TextStyle = TextStyle.Title</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$TextConfiguration.TextStyle$Body</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$TextConfiguration.TextStyle$Caption</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$TextConfiguration.TextStyle$Headline</ID>
+    <ID>UndocumentedPublicProperty:AppConfiguration.kt$TextConfiguration.TextStyle$Title</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppAnalytics$val greetingLength: Int</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppAnalytics$val platformName: String</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppAnalytics$val refreshCount: Int</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppAnalytics$val sessionDuration: Long</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppAnalytics$val titleLength: Int</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppPresenter$val state: StateFlow&lt;AppState&gt; = _state.asStateFlow()</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppState$val appTitle: String = "Bir Kelime Bir İşlem"</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppState$val greetingMessage: String = ""</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppState$val isLoading: Boolean = false</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$AppState$val lastRefreshTime: Long = 0L</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$StateValidation$val errors: List&lt;String&gt;</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$StateValidation$val hasContent: Boolean</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$StateValidation$val isStale: Boolean</ID>
+    <ID>UndocumentedPublicProperty:AppPresenter.kt$StateValidation$val isValid: Boolean</ID>
+    <ID>UndocumentedPublicProperty:AppViewModel.kt$AppUiState$val appTitle: String = "Bir Kelime Bir İşlem"</ID>
+    <ID>UndocumentedPublicProperty:AppViewModel.kt$AppUiState$val greetingMessage: String = ""</ID>
+    <ID>UndocumentedPublicProperty:AppViewModel.kt$AppUiState$val isLoading: Boolean = false</ID>
+    <ID>UndocumentedPublicProperty:AppViewModel.kt$AppViewModel$val uiState: StateFlow&lt;AppUiState&gt; = _uiState.asStateFlow()</ID>
+    <ID>UndocumentedPublicProperty:ContentManager.kt$ContentResult$val configuration: TextConfiguration</ID>
+    <ID>UndocumentedPublicProperty:ContentManager.kt$ContentResult$val greeting: String</ID>
+    <ID>UndocumentedPublicProperty:ContentManager.kt$ContentResult$val isValid: Boolean</ID>
+    <ID>UndocumentedPublicProperty:ContentManager.kt$ContentResult$val title: String</ID>
+    <ID>UndocumentedPublicProperty:Greeting.kt$Platform$val name: String</ID>
+    <ID>UndocumentedPublicProperty:MerhabaWereldPresenter.kt$MerhabaWereldPresenter$val state: StateFlow&lt;MerhabaWereldState&gt; = _state.asStateFlow()</ID>
+    <ID>UndocumentedPublicProperty:MerhabaWereldPresenter.kt$MerhabaWereldState$val clickCount: Int = 0</ID>
+    <ID>UndocumentedPublicProperty:MerhabaWereldPresenter.kt$MerhabaWereldState$val subtitle: String = "Built with Kotlin Multiplatform"</ID>
+    <ID>UndocumentedPublicProperty:MerhabaWereldPresenter.kt$MerhabaWereldState$val title: String = "Merhaba Wereld"</ID>
+    <ID>UndocumentedPublicProperty:PerformanceMonitor.kt$PerformanceMonitor$val timeSource = TimeSource.Monotonic</ID>
+    <ID>UnusedParameter:WordBoard.kt$state: WordBoardState</ID>
+    <ID>UnusedParameter:WordBoard.kt$style: WordBoardStyle</ID>
+    <ID>UnusedPrivateProperty:WordBoard.kt$var displayedWord by remember(word) { mutableStateOf("") }</ID>
+    <ID>WildcardImport:Main.kt$import org.jetbrains.compose.web.css.*</ID>
+    <ID>WildcardImport:Main.kt$import org.jetbrains.compose.web.dom.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

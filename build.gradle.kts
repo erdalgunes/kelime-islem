@@ -26,7 +26,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room) apply false
-    alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.detekt)
     alias(libs.plugins.kover) apply false
     id("kelimeislem.test.coverage")
     id("org.sonarqube") version "5.1.0.4882"
@@ -75,9 +75,50 @@ sonarqube {
     }
 }
 
-// Ensure SonarQube runs after tests and coverage
+// Ensure SonarQube runs after tests, coverage, and Detekt
 tasks.named("sonar") {
-    dependsOn("koverXmlReport")
+    dependsOn("koverXmlReport", "detekt")
+}
+
+// Configure Detekt for Kotlin Multiplatform
+detekt {
+    // KMP source sets configuration
+    source.setFrom(
+        "composeApp/src/commonMain/kotlin",
+        "composeApp/src/androidMain/kotlin", 
+        "composeApp/src/jsMain/kotlin",
+        "design-system/src/commonMain/kotlin"
+    )
+    
+    // Configuration file
+    config.setFrom("$projectDir/detekt.yml")
+    
+    // Baseline for gradual adoption
+    baseline = file("$projectDir/detekt-baseline.xml")
+    
+    // Build upon default config
+    buildUponDefaultConfig = true
+    
+    // Enable all rule sets by default
+    allRules = false
+    
+    // Reports will be configured on individual tasks
+}
+
+// Add detekt-rules-compose dependency for Compose-specific rules
+dependencies {
+    detektPlugins("io.nlopez.compose.rules:detekt:0.4.15")
+}
+
+// Configure Detekt task reports
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        sarif.required.set(true)
+        md.required.set(false)
+        txt.required.set(false)
+    }
 }
 
 // Configure Kover for multi-module project
