@@ -61,7 +61,7 @@ Turkish word game with comprehensive design system - Kotlin Multiplatform projec
 - **State Management**: Unidirectional data flow with Circuit's `Presenter` interface
 
 ### Design System Structure
-```
+```text
 design-system/src/commonMain/kotlin/com/erdalgunes/kelimeislem/designsystem/
 ├── components/          # Reusable game components
 │   ├── LetterTile.kt   # Turkish character support
