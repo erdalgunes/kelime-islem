@@ -6,12 +6,14 @@ This document describes all the secrets required for the CI/CD workflows in this
 
 ### 1. SONAR_TOKEN ✅
 - **Purpose**: Authentication token for SonarCloud analysis
-- **Status**: Already configured
+- **Status**: Configured in GitHub Secrets
 - **How to obtain**: 
   1. Log in to [SonarCloud](https://sonarcloud.io)
   2. Go to Account > Security
   3. Generate a new token with "Execute Analysis" permission
-- **Used in**: `ci.yml`, `pr-check.yml`
+  4. Add to GitHub Secrets as `SONAR_TOKEN`
+- **Used in**: `kmp-ci.yml`
+- **Note**: NEVER commit tokens to repository. Always use GitHub Secrets
 
 ### 2. CLAUDE_CODE_OAUTH_TOKEN ✅
 - **Purpose**: OAuth token for Claude Code review integration

@@ -46,8 +46,14 @@ Turkish word game with comprehensive design system - Kotlin Multiplatform projec
 # Generate coverage reports (excluded: UI files, design-system)
 ./gradlew koverXmlReport koverHtmlReport
 
-# SonarCloud analysis (requires SONAR_TOKEN)
+# SonarCloud analysis
+# Note: SONAR_TOKEN is automatically provided by GitHub Actions CI
+# For local testing: Contact repository administrators for a personal token
+# Then: export SONAR_TOKEN=<personal-token> && ./gradlew sonar
 ./gradlew sonar
+
+# Run tests and SonarCloud analysis together
+./gradlew testDebugUnitTest koverXmlReport sonar
 
 # Security checks
 ./gradlew dependencyCheckAnalyze

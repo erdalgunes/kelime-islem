@@ -18,6 +18,14 @@ out/
 local.properties
 captures/
 .externalNativeBuild/
+
+# Environment and secrets
+.env
+.env.local
+*.env
+sonar-project.local.properties
+*_token.txt
+*_secret.txt
 .cxx/
 
 # Kotlin
