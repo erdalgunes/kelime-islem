@@ -51,6 +51,9 @@ sonarqube {
         property("sonar.language", "kotlin")
         property("sonar.kotlin.source.version", "1.9")
         property("sonar.kotlin.target.version", "17")
+
+        // Detekt integration for code quality
+        property("sonar.kotlin.detekt.reportPaths", "${projectDir}/build/reports/detekt/detekt.xml")
         
         // Coverage configuration
         property("sonar.coverage.jacoco.xmlReportPaths", "${projectDir}/composeApp/build/reports/kover/report.xml")
