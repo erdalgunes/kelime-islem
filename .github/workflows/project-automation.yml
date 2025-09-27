@@ -482,10 +482,11 @@ jobs:
             });
 
             try {
-              // Dynamically resolve discussion category
+              // Query repository ID and discussion categories together
               const query = `
                 query($owner: String!, $name: String!) {
                   repository(owner: $owner, name: $name) {
+                    id
                     discussionCategories(first: 100) {
                       nodes {
                         id
@@ -502,6 +503,12 @@ jobs:
                 name: context.repo.repo
               });
 
+              // Check if repository ID was returned
+              if (!result.repository || !result.repository.id) {
+                throw new Error('Could not retrieve repository ID from GraphQL');
+              }
+
+              const repositoryId = result.repository.id;
               const categories = result.repository.discussionCategories.nodes;
 
               // Try to find Daily Standups category, fall back to General or first available
@@ -537,7 +544,7 @@ jobs:
                   }
                 }
               `, {
-                repositoryId: context.payload.repository.node_id,
+                repositoryId: repositoryId,
                 categoryId: category.id,
                 title: `Daily Standup - ${today}`,
                 body: `## Daily Standup - ${today}\n\nPlease share your updates:\n\n### Template\n\\\`\\\`\\\`markdown\n## @your-username\n\n### Yesterday\n- What you completed\n\n### Today\n- What you're working on\n\n### Blockers\n- Any impediments\n\\\`\\\`\\\`\n\nRemember to:\n- Be specific about issue numbers\n- Mention any PRs needing review\n- Flag blockers early\n- Tag team members if you need help`
