@@ -98,7 +98,7 @@ jobs:
   auto-assign-epic:
     name: Auto-assign to Epic
     runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'epic')
+    if: github.event_name == 'issues' && github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'epic')
     steps:
       - name: Parse epic from issue body
         id: epic
@@ -110,21 +110,34 @@ jobs:
             return epicMatch ? epicMatch[1] : null;
 
       - name: Link to epic
-        if: steps.epic.outputs.result
+        if: steps.epic.outputs.result != 'null' && steps.epic.outputs.result != ''
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.issues.createComment({
+            // Check if comment already exists to avoid duplicates
+            const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `🔗 Linked to Epic #${{ steps.epic.outputs.result }}`
+              issue_number: context.issue.number
             });
+
+            const epicNumber = ${{ steps.epic.outputs.result }};
+            const linkText = `🔗 Linked to Epic #${epicNumber}`;
+            const alreadyLinked = comments.data.some(c => c.body.includes(linkText));
+
+            if (!alreadyLinked) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: linkText
+              });
+            }
 
   update-sprint-field:
     name: Update Sprint Field
     runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'sprint/')
+    if: github.event_name == 'issues' && github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'sprint/')
     steps:
       - name: Extract sprint number
         id: sprint
@@ -147,7 +160,7 @@ jobs:
   calculate-story-points:
     name: Calculate Story Points
     runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'size/')
+    if: github.event_name == 'issues' && github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'size/')
     steps:
       - name: Map size to points
         id: points
