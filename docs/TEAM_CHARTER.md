@@ -242,7 +242,7 @@ Build a world-class Turkish word game that brings joy to players while showcasin
 **Agreement**: By contributing to this project, I agree to uphold these values and agreements.
 
 *Last Updated: September 27, 2025*
-*Next Review: January 1, 2025*
+*Next Review: January 1, 2026*
 
 ## Team Signatures
 - @erdalgunes - Team Lead ✅

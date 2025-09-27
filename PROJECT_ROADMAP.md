@@ -204,4 +204,4 @@ Build the premier Turkish word game platform with modern design, multiplayer cap
 ---
 
 *Last Updated: September 27, 2025*
-*Next Review: January 1, 2025*
+*Next Review: January 1, 2026*

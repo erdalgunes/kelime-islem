@@ -337,4 +337,4 @@ External Arbitration
 ---
 
 *Last Updated: September 27, 2025*
-*Next Review: Q1 2025*
+*Next Review: Q1 2026*

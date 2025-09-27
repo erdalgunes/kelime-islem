@@ -280,4 +280,4 @@ Following Semantic Versioning (MAJOR.MINOR.PATCH):
 ---
 
 *Last Updated: September 27, 2025*
-*Next Review: End of Q1 2025*
+*Next Review: End of Q1 2026*
