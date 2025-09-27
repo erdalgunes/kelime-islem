@@ -1,0 +1,125 @@
+name: Update API for Obtanium
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  generate-update-api:
+    name: Generate Update API
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get latest release info
+      id: release
+      run: |
+        # Get latest release data
+        RELEASE_DATA=$(gh api repos/${{ github.repository }}/releases/latest)
+
+        # Extract version and download URL
+        VERSION=$(echo "$RELEASE_DATA" | jq -r '.tag_name' | sed 's/^v//')
+        APK_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -1)
+        RELEASE_DATE=$(echo "$RELEASE_DATA" | jq -r '.published_at')
+        RELEASE_NOTES=$(echo "$RELEASE_DATA" | jq -r '.body')
+
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "apk_url=$APK_URL" >> $GITHUB_OUTPUT
+        echo "date=$RELEASE_DATE" >> $GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Generate Obtanium-compatible JSON
+      run: |
+        mkdir -p api
+
+        # Generate main update JSON
+        cat > api/update.json << EOF
+        {
+          "app": {
+            "id": "com.erdalgunes.kelimeislem",
+            "name": "Kelime İşlem",
+            "author": "Erdal Güneş",
+            "source": "GitHub"
+          },
+          "latestVersion": {
+            "version": "${{ steps.release.outputs.version }}",
+            "versionCode": $(date +%s | cut -c 5-),
+            "releaseDate": "${{ steps.release.outputs.date }}",
+            "apkUrl": "${{ steps.release.outputs.apk_url }}",
+            "sha256": "",
+            "fileSize": 0,
+            "minSdkVersion": 24,
+            "targetSdkVersion": 36
+          },
+          "updateInfo": {
+            "mandatory": false,
+            "changelog": "Check GitHub release for full changelog",
+            "releaseUrl": "https://github.com/${{ github.repository }}/releases/latest"
+          },
+          "obtanium": {
+            "appId": "com.erdalgunes.kelimeislem",
+            "sourceUrl": "https://github.com/${{ github.repository }}",
+            "preferredApkIndex": 0,
+            "useLatestTag": true,
+            "fallbackToOlderReleases": true,
+            "filterAssets": true,
+            "filterRegex": ".*\\\\.apk$",
+            "versionDetection": "standardVersioning",
+            "apkFilterRegex": ".*release.*\\\\.apk$",
+            "autoApkFilterByArch": true,
+            "appName": "Kelime İşlem",
+            "exemptFromBackgroundUpdates": false,
+            "skipUpdateNotifications": false,
+            "about": "Turkish word game - Bir Kelime Bir İşlem"
+          }
+        }
+        EOF
+
+        # Generate version check endpoint
+        cat > api/version.json << EOF
+        {
+          "stable": {
+            "version": "${{ steps.release.outputs.version }}",
+            "url": "${{ steps.release.outputs.apk_url }}"
+          },
+          "beta": {
+            "version": "${{ steps.release.outputs.version }}",
+            "url": "${{ steps.release.outputs.apk_url }}"
+          }
+        }
+        EOF
+
+        # Generate simple version text file (for basic checks)
+        echo "${{ steps.release.outputs.version }}" > api/version.txt
+
+    - name: Setup GitHub Pages
+      uses: actions/configure-pages@v5
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./api
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+    - name: Output API endpoints
+      run: |
+        echo "📱 Update API endpoints are now available at:"
+        echo ""
+        echo "🔗 Obtanium-compatible: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/update.json"
+        echo "🔗 Version check: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/version.json"
+        echo "🔗 Simple version: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/version.txt"
+        echo ""
+        echo "Add to Obtanium using:"
+        echo "Source URL: https://github.com/${{ github.repository }}"
