@@ -114,13 +114,14 @@ if [ -n "$KOTLIN_FILES" ]; then
             COMPLEX_COMPOSABLES=$({ grep -n "@Composable" "$file" || true; } | while read -r line; do
                 line_num=$(echo "$line" | cut -d: -f1)
                 # Extract function signature from @Composable line to opening brace
-                func_line=$(sed -n "${line_num},/^{/p" "$file" | tr '\n' ' ')
+                func_line=$(sed -n "${line_num},/{/p" "$file" | tr '\n' ' ')
                 # Extract parameter list from function signature
-                params=$(echo "$func_line" | sed -n 's/^[^(]*(\\([^)]*\\)).*/\\1/p')
+                params=$(echo "$func_line" | sed -n 's/^[^(]*(\([^)]*\)).*/\1/p')
                 if [ -z "${params// }" ]; then
                     param_count=0
                 else
-                    param_count=$(awk -F',' '{print NF}' <<< "$params")
+                    # Trim optional trailing comma then count fields
+                    param_count=$(awk -F',' '{gsub(/[[:space:]]+/,""); gsub(/,*$/,""); print ($0==""?0:NF)}' <<< "$params")
                 fi
                 if [ "$param_count" -gt "$MAX_COMPLEXITY_SCORE" ]; then
                     echo "$file:$line_num has $param_count parameters (consider refactoring)"
