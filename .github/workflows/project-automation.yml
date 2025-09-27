@@ -1,6 +1,8 @@
 name: Project Automation
 
 on:
+  schedule:
+    - cron: '0 9 * * 1-5' # Monday-Friday at 9 AM UTC for daily standup reminder
   issues:
     types: [opened, closed, reopened, assigned, unassigned, labeled]
   pull_request:
@@ -210,39 +212,5 @@ jobs:
               repo: context.repo.repo,
               category_id: 'DIC_kwDONSXx4M4CjT5g', // Daily Standups category
               title: `Daily Standup - ${today}`,
-              body: `## Daily Standup - ${today}
-
-Please share your updates:
-
-### Template
-\`\`\`markdown
-## @your-username
-
-### Yesterday
-- What you completed
-
-### Today
-- What you're working on
-
-### Blockers
-- Any impediments
-\`\`\`
-
-Remember to:
-- Be specific about issue numbers
-- Mention any PRs needing review
-- Flag blockers early
-- Tag team members if you need help`
+              body: `## Daily Standup - ${today}\n\nPlease share your updates:\n\n### Template\n\\\`\\\`\\\`markdown\n## @your-username\n\n### Yesterday\n- What you completed\n\n### Today\n- What you're working on\n\n### Blockers\n- Any impediments\n\\\`\\\`\\\`\n\nRemember to:\n- Be specific about issue numbers\n- Mention any PRs needing review\n- Flag blockers early\n- Tag team members if you need help`
             });
-
-# Schedule this workflow to run daily at 9 AM
-on:
-  schedule:
-    - cron: '0 9 * * 1-5' # Monday-Friday at 9 AM UTC
-  # Also trigger on the events above
-  issues:
-    types: [opened, closed, reopened, assigned, unassigned, labeled]
-  pull_request:
-    types: [opened, closed, ready_for_review, review_requested]
-  issue_comment:
-    types: [created]
