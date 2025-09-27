@@ -111,11 +111,17 @@ if [ -n "$KOTLIN_FILES" ]; then
             fi
 
             # Check for complex Composable functions
-            COMPLEX_COMPOSABLES=$(grep -n "@Composable" "$file" 2>/dev/null | while read -r line; do
+            COMPLEX_COMPOSABLES=$({ grep -n "@Composable" "$file" || true; } | while read -r line; do
                 line_num=$(echo "$line" | cut -d: -f1)
-                # Simple heuristic: count commas in function signature
+                # Extract function signature from @Composable line to opening brace
                 func_line=$(sed -n "${line_num},/^{/p" "$file" | tr '\n' ' ')
-                param_count=$(echo "$func_line" | grep -o "," | wc -l | tr -d ' ')
+                # Extract parameter list from function signature
+                params=$(echo "$func_line" | sed -n 's/^[^(]*(\\([^)]*\\)).*/\\1/p')
+                if [ -z "${params// }" ]; then
+                    param_count=0
+                else
+                    param_count=$(awk -F',' '{print NF}' <<< "$params")
+                fi
                 if [ "$param_count" -gt "$MAX_COMPLEXITY_SCORE" ]; then
                     echo "$file:$line_num has $param_count parameters (consider refactoring)"
                 fi
