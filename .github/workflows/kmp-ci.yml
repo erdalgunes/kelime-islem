@@ -54,6 +54,25 @@ jobs:
       run: ./gradlew lint --continue
       continue-on-error: true
 
+    - name: Run Detekt static analysis
+      run: ./gradlew detekt
+      continue-on-error: false
+
+    - name: Upload Detekt reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: detekt-reports
+        path: |
+          build/reports/detekt/
+        retention-days: 7
+
+    - name: Upload Detekt SARIF to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: build/reports/detekt/detekt.sarif
+
     - name: Upload lint reports
       uses: actions/upload-artifact@v4
       if: always()
@@ -159,6 +178,10 @@ jobs:
 
     - name: Run tests with coverage
       run: ./gradlew testDebugUnitTest koverXmlReport koverHtmlReport
+
+    - name: Run Detekt for SonarCloud integration
+      run: ./gradlew detekt
+      continue-on-error: false
 
     - name: Verify coverage threshold
       run: ./gradlew koverVerify
