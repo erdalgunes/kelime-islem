@@ -10,6 +10,14 @@ on:
   issue_comment:
     types: [created]
 
+env:
+  PROJECT_ID: ${{ vars.PROJECT_ID || 'PVT_kwHOADr0ls4BELXk' }}
+  PROJECT_URL: ${{ vars.PROJECT_URL || 'https://github.com/users/erdalgunes/projects/12' }}
+
+# Note: GraphQL queries could be optimized by batching field queries with addProjectV2ItemById
+# mutations in a single request. Consider implementing a reusable composite action for common
+# project operations to reduce API calls and improve performance.
+
 jobs:
   add-to-project:
     name: Add to Project Board
@@ -19,7 +27,7 @@ jobs:
       - name: Add issue to project
         uses: actions/add-to-project@v1.0.2
         with:
-          project-url: https://github.com/users/erdalgunes/projects/12
+          project-url: ${{ env.PROJECT_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   move-to-in-progress:
@@ -31,69 +39,79 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const projectId = 'PVT_kwHOADr0ls4BELXk';
+            const projectId = '${{ env.PROJECT_ID }}';
             const itemId = '${{ github.event.issue.node_id }}';
 
-            // First, add the issue to the project if not already added
-            const addResponse = await github.graphql(`
-              mutation($projectId: ID!, $contentId: ID!) {
-                addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
-                  item {
-                    id
+            try {
+              // First, add the issue to the project if not already added
+              const addResponse = await github.graphql(`
+                mutation($projectId: ID!, $contentId: ID!) {
+                  addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                    item {
+                      id
+                    }
                   }
                 }
-              }
-            `, {
-              projectId,
-              contentId: itemId
-            });
+              `, {
+                projectId,
+                contentId: itemId
+              });
 
-            // Get the project field for Status
-            const projectData = await github.graphql(`
-              query($projectId: ID!) {
-                node(id: $projectId) {
-                  ... on ProjectV2 {
-                    fields(first: 20) {
-                      nodes {
-                        ... on ProjectV2SingleSelectField {
-                          id
-                          name
-                          options {
+              // Get the project field for Status
+              const projectData = await github.graphql(`
+                query($projectId: ID!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      fields(first: 20) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
                             id
                             name
+                            options {
+                              id
+                              name
+                            }
                           }
                         }
                       }
                     }
                   }
                 }
-              }
-            `, { projectId });
+              `, { projectId });
 
-            const statusField = projectData.node.fields.nodes.find(f => f.name === 'Status');
-            if (statusField) {
-              const inProgressOption = statusField.options.find(o => o.name === '💻 In Progress' || o.name === 'In Progress');
-              if (inProgressOption) {
-                await github.graphql(`
-                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
-                    updateProjectV2ItemFieldValue(
-                      input: {
-                        projectId: $projectId,
-                        itemId: $itemId,
-                        fieldId: $fieldId,
-                        value: { singleSelectOptionId: $optionId }
+              const statusField = projectData.node.fields.nodes.find(f => f.name === 'Status');
+              if (statusField) {
+                const inProgressOption = statusField.options.find(o => o.name === '💻 In Progress' || o.name === 'In Progress');
+                if (inProgressOption) {
+                  await github.graphql(`
+                    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                      updateProjectV2ItemFieldValue(
+                        input: {
+                          projectId: $projectId,
+                          itemId: $itemId,
+                          fieldId: $fieldId,
+                          value: { singleSelectOptionId: $optionId }
+                        }
+                      ) {
+                        projectV2Item { id }
                       }
-                    ) {
-                      projectV2Item { id }
                     }
-                  }
-                `, {
-                  projectId,
-                  itemId: addResponse.addProjectV2ItemById.item.id,
-                  fieldId: statusField.id,
-                  optionId: inProgressOption.id
-                });
+                  `, {
+                    projectId,
+                    itemId: addResponse.addProjectV2ItemById.item.id,
+                    fieldId: statusField.id,
+                    optionId: inProgressOption.id
+                  });
+                  console.log('✅ Issue moved to In Progress');
+                } else {
+                  core.warning('In Progress status option not found in project');
+                }
+              } else {
+                core.warning('Status field not found in project');
               }
+            } catch (error) {
+              core.warning(`Failed to update project: ${error.message}`);
+              console.error('Full error:', error);
             }
 
   move-to-review:
@@ -136,12 +154,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const projectId = 'PVT_kwHOADr0ls4BELXk';
+            const projectId = '${{ env.PROJECT_ID }}';
             const issues = ${{ steps.linked.outputs.result }};
 
             for (const issue of issues) {
-              // Add issue to project and move to Review
-              const addResponse = await github.graphql(`
+              try {
+                // Add issue to project and move to Review
+                const addResponse = await github.graphql(`
                 mutation($projectId: ID!, $contentId: ID!) {
                   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
                     item { id }
@@ -194,7 +213,15 @@ jobs:
                     fieldId: statusField.id,
                     optionId: reviewOption.id
                   });
+                  console.log(`✅ Issue #${issue.number} moved to Review`);
+                } else {
+                  core.warning(`Review status not found for issue #${issue.number}`);
                 }
+              } else {
+                core.warning(`Status field not found for issue #${issue.number}`);
+              }
+              } catch (error) {
+                core.warning(`Failed to update issue #${issue.number}: ${error.message}`);
               }
             }
 
@@ -209,7 +236,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const projectId = 'PVT_kwHOADr0ls4BELXk';
+            const projectId = '${{ env.PROJECT_ID }}';
             const itemId = '${{ github.event.issue.node_id || github.event.pull_request.node_id }}';
 
             // Add to project and move to Done
@@ -325,7 +352,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const projectId = 'PVT_kwHOADr0ls4BELXk';
+            const projectId = '${{ env.PROJECT_ID }}';
             const itemId = '${{ github.event.issue.node_id }}';
             const sprintNumber = '${{ steps.sprint.outputs.sprint_number }}';
 
@@ -408,7 +435,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const projectId = 'PVT_kwHOADr0ls4BELXk';
+            const projectId = '${{ env.PROJECT_ID }}';
             const itemId = '${{ github.event.issue.node_id }}';
             const points = '${{ steps.points.outputs.points }}';
 

@@ -19,8 +19,8 @@ body:
     id: sprint_dates
     attributes:
       label: Sprint Dates
-      description: Start and end dates of the sprint
-      placeholder: "e.g., Jan 1 - Jan 14, 2025"
+      description: Start and end dates of the sprint (include timezone)
+      placeholder: "e.g., Jan 1 - Jan 14, 2025 (UTC)"
     validations:
       required: true
 
