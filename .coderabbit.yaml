@@ -1,0 +1,57 @@
+# CodeRabbit Configuration
+# Minimal setup for automated PR reviews
+
+# Review settings
+reviews:
+  # Automatic review on PRs
+  auto_review:
+    enabled: true
+    drafts: false  # Don't review draft PRs
+
+  # Don't request changes automatically, just provide suggestions
+  request_changes_workflow: false
+
+  # Provide high-level summary
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+
+  # Review tools and integrations
+  review_status: true  # Show review status in PR
+
+  # Path-specific instructions
+  path_instructions:
+    - path: "**/*.kt"
+      instructions: |
+        - Follow Kotlin coding conventions
+        - Check for null safety issues
+        - Ensure proper coroutine usage
+        - Validate Compose best practices
+
+    - path: "**/*.yml"
+      instructions: |
+        - Validate YAML syntax
+        - Check GitHub Actions best practices
+        - Ensure secure permissions
+        - Verify no hardcoded secrets
+
+    - path: "**/build.gradle.kts"
+      instructions: |
+        - Check for dependency version conflicts
+        - Validate Kotlin Multiplatform configuration
+        - Ensure consistent versioning
+
+    - path: "**/*.md"
+      instructions: |
+        - Check markdown formatting
+        - Validate links
+        - Ensure documentation is clear
+
+# Language for comments
+language: "en-US"
+
+# Chat settings
+chat:
+  auto_reply: true  # Respond to @coderabbitai mentions
+
+# Disable early access features for stability
+early_access: false
