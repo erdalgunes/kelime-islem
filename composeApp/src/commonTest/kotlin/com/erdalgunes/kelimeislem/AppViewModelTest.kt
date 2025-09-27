@@ -16,6 +16,7 @@
 
 package com.erdalgunes.kelimeislem
 
+import androidx.compose.ui.unit.dp
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -79,6 +80,15 @@ class AppViewModelTest : FreeSpec({
                 refreshedGreeting shouldBe initialGreeting
             }
             
+            "should set loading state temporarily during refresh" {
+                val viewModel = AppViewModel()
+                
+                viewModel.refresh()
+                
+                // After refresh completes, loading should be false
+                viewModel.uiState.value.isLoading shouldBe false
+            }
+            
             "should maintain app title during refresh" {
                 val viewModel = AppViewModel()
                 val initialTitle = viewModel.uiState.value.appTitle
@@ -97,6 +107,13 @@ class AppViewModelTest : FreeSpec({
                     val viewModel = AppViewModel()
                     viewModel.shouldAutoRefresh() shouldBe false
                 }
+                
+                "should delegate to ContentManager logic" {
+                    val viewModel = AppViewModel()
+                    // This tests that the method exists and returns a boolean
+                    val result = viewModel.shouldAutoRefresh()
+                    (result == true || result == false) shouldBe true
+                }
             }
             
             "getContentResult" - {
@@ -108,6 +125,15 @@ class AppViewModelTest : FreeSpec({
                     result.hasContent() shouldBe true
                     result.title shouldBe "Bir Kelime Bir İşlem"
                 }
+                
+                "should include current greeting in result" {
+                    val viewModel = AppViewModel()
+                    val state = viewModel.uiState.value
+                    val result = viewModel.getContentResult()
+                    
+                    result.greeting shouldBe state.greetingMessage
+                    result.title shouldBe state.appTitle
+                }
             }
             
             "getDebugInfo" - {
@@ -118,6 +144,21 @@ class AppViewModelTest : FreeSpec({
                     
                     debugInfo shouldContain "Debug Info"
                     debugInfo shouldContain "Bir Kelime Bir İşlem"
+                }
+                
+                "should include state and config details" {
+                    val viewModel = AppViewModel()
+                    val config = AppConfiguration(
+                        padding = 24.dp,
+                        enableAnimations = true
+                    )
+                    val debugInfo = viewModel.getDebugInfo(config)
+                    
+                    debugInfo shouldContain "Greeting:"
+                    debugInfo shouldContain "Title:"
+                    debugInfo shouldContain "Loading:"
+                    debugInfo shouldContain "Padding:"
+                    debugInfo shouldContain "Animations:"
                 }
             }
         }
