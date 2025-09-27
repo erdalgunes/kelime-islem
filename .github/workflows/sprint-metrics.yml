@@ -207,6 +207,46 @@ jobs:
       - name: Create metrics report
         id: report
         run: |
+          # Extract metrics values
+          issues_completed=${{ fromJson(steps.issues.outputs.result).completed }}
+          issues_total=${{ fromJson(steps.issues.outputs.result).total }}
+          issues_in_progress=${{ fromJson(steps.issues.outputs.result).inProgress }}
+          issues_not_started=${{ fromJson(steps.issues.outputs.result).notStarted }}
+
+          points_completed=${{ fromJson(steps.issues.outputs.result).completedPoints }}
+          points_total=${{ fromJson(steps.issues.outputs.result).totalPoints }}
+          points_velocity=${{ fromJson(steps.issues.outputs.result).velocity }}
+
+          bugs_count=${{ fromJson(steps.issues.outputs.result).bugs }}
+          features_count=${{ fromJson(steps.issues.outputs.result).features }}
+
+          prs_total=${{ fromJson(steps.prs.outputs.result).total }}
+          prs_merged=${{ fromJson(steps.prs.outputs.result).merged }}
+          prs_closed=${{ fromJson(steps.prs.outputs.result).closed }}
+          prs_open=${{ fromJson(steps.prs.outputs.result).open }}
+          prs_avg_review=${{ fromJson(steps.prs.outputs.result).avgReviewTime }}
+
+          # Calculate percentages safely
+          if [ "$issues_total" -eq 0 ]; then
+            issues_pct="N/A"
+          else
+            issues_pct=$(( issues_completed * 100 / issues_total ))
+            issues_pct="${issues_pct}%"
+          fi
+
+          if [ "$points_total" -eq 0 ]; then
+            points_pct="N/A"
+          else
+            points_pct=$(( points_completed * 100 / points_total ))
+            points_pct="${points_pct}%"
+          fi
+
+          # Export for use in heredoc
+          export issues_completed issues_total issues_in_progress issues_not_started issues_pct
+          export points_completed points_total points_velocity points_pct
+          export bugs_count features_count
+          export prs_total prs_merged prs_closed prs_open prs_avg_review
+
           cat > sprint-metrics.md << EOF
           # Sprint ${{ steps.dates.outputs.sprint_number }} Metrics Report
 
@@ -215,33 +255,33 @@ jobs:
           ## 📊 Sprint Overview
 
           ### Issues
-          - **Total Issues**: ${{ fromJson(steps.issues.outputs.result).total }}
-          - **Completed**: ${{ fromJson(steps.issues.outputs.result).completed }}
-          - **In Progress**: ${{ fromJson(steps.issues.outputs.result).inProgress }}
-          - **Not Started**: ${{ fromJson(steps.issues.outputs.result).notStarted }}
+          - **Total Issues**: ${issues_total}
+          - **Completed**: ${issues_completed}
+          - **In Progress**: ${issues_in_progress}
+          - **Not Started**: ${issues_not_started}
 
           ### Story Points
-          - **Committed**: ${{ fromJson(steps.issues.outputs.result).totalPoints }} points
-          - **Completed**: ${{ fromJson(steps.issues.outputs.result).completedPoints }} points
-          - **Velocity**: ${{ fromJson(steps.issues.outputs.result).velocity }} points
+          - **Committed**: ${points_total} points
+          - **Completed**: ${points_completed} points
+          - **Velocity**: ${points_velocity} points
 
           ### Issue Types
-          - **Bugs**: ${{ fromJson(steps.issues.outputs.result).bugs }}
-          - **Features**: ${{ fromJson(steps.issues.outputs.result).features }}
+          - **Bugs**: ${bugs_count}
+          - **Features**: ${features_count}
 
           ## 🔄 Pull Requests
 
-          - **Total PRs**: ${{ fromJson(steps.prs.outputs.result).total }}
-          - **Merged**: ${{ fromJson(steps.prs.outputs.result).merged }}
-          - **Closed (not merged)**: ${{ fromJson(steps.prs.outputs.result).closed }}
-          - **Still Open**: ${{ fromJson(steps.prs.outputs.result).open }}
-          - **Avg Review Time**: ${{ fromJson(steps.prs.outputs.result).avgReviewTime }} hours
+          - **Total PRs**: ${prs_total}
+          - **Merged**: ${prs_merged}
+          - **Closed (not merged)**: ${prs_closed}
+          - **Still Open**: ${prs_open}
+          - **Avg Review Time**: ${prs_avg_review} hours
 
           ## 📈 Completion Rate
 
           \`\`\`
-          Issues: ${{ fromJson(steps.issues.outputs.result).completed }}/${{ fromJson(steps.issues.outputs.result).total }} ($(( ${{ fromJson(steps.issues.outputs.result).completed }} * 100 / ${{ fromJson(steps.issues.outputs.result).total }} ))%)
-          Points: ${{ fromJson(steps.issues.outputs.result).completedPoints }}/${{ fromJson(steps.issues.outputs.result).totalPoints }} ($(( ${{ fromJson(steps.issues.outputs.result).completedPoints }} * 100 / ${{ fromJson(steps.issues.outputs.result).totalPoints }} ))%)
+          Issues: ${issues_completed}/${issues_total} (${issues_pct})
+          Points: ${points_completed}/${points_total} (${points_pct})
           \`\`\`
 
           ## 🎯 Sprint Goals Achievement
