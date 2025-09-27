@@ -32,9 +32,8 @@ if echo "$STAGED_FILES" | grep -q "\.github/workflows/.*\.yml"; then
     echo "  Validating workflow files..."
 
     # Check for non-existent Gradle tasks
-    if git diff --cached | grep -E "gradlew (detekt|ktlintCheck)" > /dev/null; then
+    if git diff --cached | grep -E "gradlew (ktlintCheck)" > /dev/null; then
         echo -e "${RED}❌ Error: Invalid Gradle tasks in workflow!${NC}"
-        echo "  - 'detekt' task doesn't exist (use 'lint' instead)"
         echo "  - 'ktlintCheck' task doesn't exist"
         exit 1
     fi
@@ -51,6 +50,15 @@ if echo "$STAGED_FILES" | grep -q "\.github/workflows/.*\.yml"; then
 fi
 
 # Quick Kotlin formatting check on staged files only
+fi
+
+# Run Detekt static analysis on all sources
+echo "  Running Detekt static analysis..."
+if ! ./gradlew detekt --console=plain; then
+    echo -e "${RED}❌ Detekt static analysis failed!${NC}"
+    echo "  Please fix the issues above before committing."
+    exit 1
+fi
 KOTLIN_FILES=$(echo "$STAGED_FILES" | grep "\.kt$" || true)
 if [ -n "$KOTLIN_FILES" ]; then
     echo "  Checking Kotlin formatting..."
