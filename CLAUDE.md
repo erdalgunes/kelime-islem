@@ -78,9 +78,10 @@ design-system/src/commonMain/kotlin/com/erdalgunes/kelimeislem/designsystem/
 ```
 
 ### Testing Strategy
-- **Business Logic**: Kotest property-based testing (98.9% coverage target)
+- **Business Logic**: Kotest property-based testing (80% minimum threshold)
 - **UI Components**: Screenshot testing with Paparazzi (planned)
 - **Coverage Exclusions**: UI files, design-system module, generated code
+- **Current Status**: 52.5% baseline coverage, targeting 80%+ for business logic
 
 ## Required Tool Usage
 ### 0. Check the current date
@@ -111,3 +112,9 @@ Use context7 mcp tools to get official docs for libraries and tools.
 - `kelimeislem.compose.multiplatform` - Compose Multiplatform setup
 - `kelimeislem.kmp.test` - Kotest configuration with property-based testing
 - `kelimeislem.test.coverage` - Kover coverage with 80% minimum threshold
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
