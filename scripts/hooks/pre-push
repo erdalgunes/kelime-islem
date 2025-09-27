@@ -2,7 +2,15 @@
 # Comprehensive pre-push hook for Kelime İşlem
 # Full CI simulation before push to catch all failures
 
-set -e
+set -eo pipefail
+
+# Configuration
+PARALLEL_JOBS=4
+CACHE_DIR=".git/hooks-cache"
+SKIP_CHECKS_FILE=".git/skip-checks"
+TASK_TIMEOUT=${TASK_TIMEOUT:-60}
+CURRENT_TASK=0
+TOTAL_TASKS=9
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,44 +21,159 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Running pre-push CI validation...${NC}"
 
+# Progress indicator
+show_progress() {
+    local task_name=$1
+    ((CURRENT_TASK++))
+    echo -e "${YELLOW}[$CURRENT_TASK/$TOTAL_TASKS] $task_name...${NC}"
+}
+
+# Validate skip-checks file format
+validate_skip_checks() {
+    if [ -f "$SKIP_CHECKS_FILE" ]; then
+        local valid_checks="yaml-validation gradle-tasks platform-check lint-checks compilation unit-tests required-files commit-analysis"
+        while IFS= read -r line; do
+            # Skip empty lines and comments
+            [[ -z "$line" || "$line" =~ ^# ]] && continue
+            if ! echo "$valid_checks" | grep -qw "$line"; then
+                echo -e "${YELLOW}⚠️  Warning: Invalid check name in skip-checks: $line${NC}"
+            fi
+        done < "$SKIP_CHECKS_FILE"
+    fi
+}
+
+validate_skip_checks
+
+# Cache file for Gradle tasks
+CACHE_FILE=".gradle/task-cache"
+
 # Function to check if a Gradle task exists
 check_gradle_task() {
     local task=$1
-    if ! ./gradlew tasks --all 2>/dev/null | grep -q "^$task "; then
-        echo -e "${RED}❌ Gradle task '$task' not found!${NC}"
+    # Normalize task name - remove leading colon for cache lookup
+    local normalized_task="${task#:}"
+    local task_pattern="^:*$normalized_task "
+    
+    # Use cache if available and fresh
+    if [ -f "$CACHE_FILE" ] && is_cache_fresh; then
+        if ! grep -q "$task_pattern" "$CACHE_FILE" 2>/dev/null; then
+            echo -e "${RED}❌ Gradle task '$task' not found!${NC}" >&2
+            return 1
+        fi
+    else
+        # Fall back to direct query (use normalized task for consistency)
+        if ! ./gradlew tasks --all 2>/dev/null | grep -q "$task_pattern"; then
+            echo -e "${RED}❌ Gradle task '$task' not found!${NC}" >&2
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+# Parallel task execution helper
+run_parallel() {
+    local -a tasks=("$@")
+    local -a pids=()
+
+    echo "  Starting ${#tasks[@]} parallel tasks..."
+
+    # Pick a timeout binary: GNU timeout or, on macOS with coreutils installed, gtimeout
+    local TIMEOUT_BIN=""
+    if command -v timeout >/dev/null 2>&1; then
+        TIMEOUT_BIN=timeout
+    elif command -v gtimeout >/dev/null 2>&1; then
+        TIMEOUT_BIN=gtimeout
+    fi
+
+    for i in "${!tasks[@]}"; do
+        {
+            if [ -n "$TIMEOUT_BIN" ]; then
+                "$TIMEOUT_BIN" "$TASK_TIMEOUT" bash -c "${tasks[$i]}"
+            else
+                bash -c "${tasks[$i]}"
+            fi
+        } &
+        pids+=($!)
+    done
+
+    # Wait for all tasks to complete and track failures
+    # …rest of function…
+}
+    local failed_tasks=()
+    for i in "${!pids[@]}"; do
+        if ! wait "${pids[$i]}"; then
+            failed_tasks+=("${tasks[$i]}")
+        fi
+    done
+
+    if [ "${#failed_tasks[@]}" -gt 0 ]; then
+        echo -e "${RED}❌ Failed tasks:${NC}"
+        for task in "${failed_tasks[@]}"; do
+            echo "  - $task"
+        done
         return 1
     fi
     return 0
 }
 
 # 1. Validate workflow YAML syntax
-echo -e "${YELLOW}📝 Validating workflow YAML syntax...${NC}"
-for workflow in .github/workflows/*.yml; do
-    if [ -f "$workflow" ]; then
-        if ! python3 -c "import yaml; yaml.safe_load(open('$workflow'))" 2>/dev/null; then
-            echo -e "${RED}❌ Invalid YAML in $workflow${NC}"
-            exit 1
-        fi
-    fi
-done
+show_progress "📝 Validating workflow YAML syntax"
+if ! python3 -c "import yaml" >/dev/null 2>&1; then
+    echo -e "${YELLOW}⚠️  PyYAML not available; skipping workflow YAML validation${NC}"
+else
+  for workflow in .github/workflows/*.yml; do
+      if [ -f "$workflow" ]; then
+          if ! python3 -c "import yaml, sys; yaml.safe_load(sys.stdin)" < "$workflow" 2>/dev/null; then
+              echo -e "${RED}❌ Invalid YAML in $workflow${NC}"
+              exit 1
+          fi
+      fi
+  done
+fi
 
 # 2. Validate GitHub Action versions (if script exists)
 if [ -f scripts/validate-action-versions.sh ]; then
-    echo -e "${YELLOW}🔖 Checking GitHub Action versions...${NC}"
+    show_progress "🔖 Checking GitHub Action versions"
     if ! ./scripts/validate-action-versions.sh; then
         echo -e "${RED}❌ GitHub Action version validation failed!${NC}"
         exit 1
     fi
 fi
 
-# 3. Extract and validate all Gradle tasks from workflows
-echo -e "${YELLOW}🔨 Validating Gradle tasks in workflows...${NC}"
-WORKFLOW_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
-    grep -oE "gradlew\s+[a-zA-Z:]+(\s|$)" | \
-    sed 's/gradlew\s*//' | \
-    sed 's/\s*$//' | \
-    tr -d '\r' | \
-    sort -u || true)
+# 3. Check cache freshness (portable way)
+is_cache_fresh() {
+    # Clean up old cache files (older than 7 days)
+    find "$(dirname "$CACHE_FILE")" -type f -name "task-cache*" -mtime +7 -delete 2>/dev/null || true
+
+    python3 -c "
+import os, sys, time
+cache_file = '$CACHE_FILE'
+if not os.path.exists(cache_file):
+    sys.exit(1)
+mtime = os.path.getmtime(cache_file)
+now = time.time()
+fresh = (now - mtime) < 3600
+sys.exit(0 if fresh else 1)
+" 2>/dev/null
+}
+
+# Refresh cache if needed
+if ! is_cache_fresh; then
+    show_progress "🔄 Refreshing Gradle task cache"
+    mkdir -p "$(dirname "$CACHE_FILE")"
+    ./gradlew tasks --all > "$CACHE_FILE" 2>/dev/null || true
+fi
+
+# 4. Extract and validate all Gradle tasks from workflows
+show_progress "🔨 Validating Gradle tasks in workflows"
+
+WORKFLOW_TASKS=$(
+  grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
+  awk '/gradlew/ {for(i=1;i<=NF;i++) if($i=="gradlew" && $(i+1) !~ /^--?/) print $(i+1)}' | \
+  grep -E '^[a-zA-Z:_-]+$' | \
+  sort -u || true
+)
 
 INVALID_TASKS=""
 for task in $WORKFLOW_TASKS; do
@@ -75,8 +198,8 @@ if [ -n "$INVALID_TASKS" ]; then
     exit 1
 fi
 
-# 4. Check for unsupported platform references
-echo -e "${YELLOW}🎯 Checking for unsupported platforms...${NC}"
+# 5. Check for unsupported platform references
+show_progress "🎯 Checking for unsupported platforms"
 UNSUPPORTED_PATTERNS="testDesktopJvm|iosX64Test|iosSimulatorArm64Test|packageDistributionForCurrentOS"
 if grep -rE "$UNSUPPORTED_PATTERNS" .github/workflows/ --include="*.yml" > /dev/null 2>&1; then
     echo -e "${RED}❌ Found references to unsupported platforms in workflows!${NC}"
@@ -84,8 +207,8 @@ if grep -rE "$UNSUPPORTED_PATTERNS" .github/workflows/ --include="*.yml" > /dev/
     exit 1
 fi
 
-# 5. Run basic lint check
-echo -e "${YELLOW}🔍 Running lint check...${NC}"
+# 6. Run basic lint check
+show_progress "🔍 Running lint check"
 if check_gradle_task "lint" 2>/dev/null; then
     if ! ./gradlew lint --continue > /dev/null 2>&1; then
         echo -e "${YELLOW}⚠️  Lint check had warnings (non-blocking)${NC}"
@@ -94,8 +217,8 @@ else
     echo -e "${YELLOW}  Skipping: lint task not available${NC}"
 fi
 
-# 6. Run quick tests (Android unit tests only for speed)
-echo -e "${YELLOW}🧪 Running Android unit tests...${NC}"
+# 7. Run quick tests (Android unit tests only for speed)
+show_progress "🧪 Running Android unit tests"
 if check_gradle_task ":composeApp:testDebugUnitTest" 2>/dev/null; then
     if ! ./gradlew :composeApp:testDebugUnitTest --continue > /dev/null 2>&1; then
         echo -e "${RED}❌ Android unit tests failed!${NC}"
@@ -106,8 +229,8 @@ else
     echo -e "${YELLOW}  Skipping: test task not available${NC}"
 fi
 
-# 7. Validate that required files exist
-echo -e "${YELLOW}📁 Checking required files...${NC}"
+# 8. Validate that required files exist
+show_progress "📁 Checking required files"
 REQUIRED_FILES=(
     ".github/workflows/kmp-ci.yml"
     "gradlew"
@@ -121,7 +244,7 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-# 8. Check for merge conflicts
+# Check for merge conflicts (no progress update for quick check)
 if grep -r "^<<<<<<<\|^=======$\|^>>>>>>>" . --exclude-dir=.git > /dev/null 2>&1; then
     echo -e "${RED}❌ Merge conflict markers found!${NC}"
     echo "  Resolve conflicts before pushing"
@@ -129,8 +252,8 @@ if grep -r "^<<<<<<<\|^=======$\|^>>>>>>>" . --exclude-dir=.git > /dev/null 2>&1
 fi
 
 # 9. Check commit messages (last 5 commits not in origin)
-echo -e "${YELLOW}💬 Checking commit messages...${NC}"
-COMMITS=$(git log origin/$(git rev-parse --abbrev-ref HEAD)..HEAD --oneline 2>/dev/null || git log -5 --oneline)
+show_progress "💬 Checking commit messages"
+COMMITS=$(git log "origin/$(git rev-parse --abbrev-ref HEAD)"..HEAD --oneline 2>/dev/null || git log -5 --oneline)
 if echo "$COMMITS" | grep -E "^[a-f0-9]+ (WIP|wip|temp|TEMP)" > /dev/null; then
     echo -e "${YELLOW}⚠️  Warning: Found WIP/temp commits${NC}"
 fi
