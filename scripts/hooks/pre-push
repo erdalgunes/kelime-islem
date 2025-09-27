@@ -21,19 +21,21 @@ check_gradle_task() {
     local task=$1
     # Normalize task name - remove leading colon for cache lookup
     local normalized_task="${task#:}"
+    local task_pattern="^:*$normalized_task "
     
     # Use cache if available and fresh
     if [ -f "$CACHE_FILE" ] && is_cache_fresh; then
-        if ! grep -q "^$normalized_task " "$CACHE_FILE" 2>/dev/null; then
+        if ! grep -q "$task_pattern" "$CACHE_FILE" 2>/dev/null; then
             echo -e "${RED}❌ Gradle task '$task' not found!${NC}" >&2
             return 1
         fi
     else
         # Fall back to direct query (use normalized task for consistency)
-        if ! ./gradlew tasks --all 2>/dev/null | grep -q "^$normalized_task "; then
+        if ! ./gradlew tasks --all 2>/dev/null | grep -q "$task_pattern"; then
             echo -e "${RED}❌ Gradle task '$task' not found!${NC}" >&2
             return 1
         fi
+    fi
     fi
     return 0
 }
