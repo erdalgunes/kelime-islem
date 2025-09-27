@@ -1,0 +1,135 @@
+title: "[ADR] "
+labels: ["adr", "architecture", "decision"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Architecture Decision Record (ADR)
+        Document significant architectural decisions and their context.
+
+  - type: input
+    id: adr_number
+    attributes:
+      label: ADR Number
+      description: Sequential number for this ADR
+      placeholder: "e.g., ADR-001"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      options:
+        - Proposed
+        - Accepted
+        - Rejected
+        - Deprecated
+        - Superseded
+    validations:
+      required: true
+
+  - type: input
+    id: supersedes
+    attributes:
+      label: Supersedes
+      description: If this replaces another ADR, reference it here
+      placeholder: "e.g., ADR-001"
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What is the issue or situation that we're addressing?
+      placeholder: |
+        Describe the forces at play, including:
+        - Technical constraints
+        - Business requirements
+        - Team capabilities
+        - Time constraints
+    validations:
+      required: true
+
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision
+      description: What have we decided to do?
+      placeholder: |
+        State the decision clearly and concisely.
+        Include the specific technology, pattern, or approach chosen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other options did we evaluate?
+      placeholder: |
+        ### Option 1: [Name]
+        - Description
+        - Pros
+        - Cons
+
+        ### Option 2: [Name]
+        - Description
+        - Pros
+        - Cons
+    validations:
+      required: true
+
+  - type: textarea
+    id: consequences
+    attributes:
+      label: Consequences
+      description: What are the results of this decision?
+      placeholder: |
+        ### Positive
+        - Benefit 1
+        - Benefit 2
+
+        ### Negative
+        - Trade-off 1
+        - Trade-off 2
+
+        ### Neutral
+        - Side effect 1
+        - Side effect 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Notes
+      description: How will this decision be implemented?
+      placeholder: |
+        - Migration strategy
+        - Timeline
+        - Team assignments
+        - Dependencies
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Links to relevant documentation, discussions, or external resources
+      placeholder: |
+        - [RFC #123](link)
+        - [Documentation](link)
+        - [Blog post](link)
+    validations:
+      required: false
+
+  - type: textarea
+    id: review_notes
+    attributes:
+      label: Review Notes
+      description: Comments from reviewers or stakeholders
+    validations:
+      required: false

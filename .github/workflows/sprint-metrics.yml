@@ -1,0 +1,309 @@
+name: Sprint Metrics
+
+on:
+  schedule:
+    # Run every Friday at 4 PM UTC (end of sprint)
+    - cron: '0 16 * * 5'
+  workflow_dispatch:
+    inputs:
+      sprint_number:
+        description: 'Sprint number to analyze'
+        required: true
+        type: string
+
+jobs:
+  collect-metrics:
+    name: Collect Sprint Metrics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Calculate sprint dates
+        id: dates
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            SPRINT="${{ github.event.inputs.sprint_number }}"
+          else
+            # Calculate current sprint based on date
+            START_DATE="2025-01-01"
+            CURRENT_DATE=$(date +%s)
+            START_TIMESTAMP=$(date -d "$START_DATE" +%s)
+            DAYS_SINCE_START=$(( ($CURRENT_DATE - $START_TIMESTAMP) / 86400 ))
+            SPRINT=$(( ($DAYS_SINCE_START / 14) + 1 ))
+          fi
+
+          echo "sprint_number=$SPRINT" >> $GITHUB_OUTPUT
+          echo "end_date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+          echo "start_date=$(date -d '14 days ago' +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Collect issue metrics
+        id: issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sprint = ${{ steps.dates.outputs.sprint_number }};
+            const startDate = '${{ steps.dates.outputs.start_date }}';
+            const endDate = '${{ steps.dates.outputs.end_date }}';
+
+            // Get issues in current sprint
+            const sprintLabel = `sprint/${sprint}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: sprintLabel,
+              state: 'all',
+              per_page: 100
+            });
+
+            // Calculate metrics
+            const metrics = {
+              total: issues.length,
+              completed: issues.filter(i => i.state === 'closed').length,
+              inProgress: issues.filter(i => i.state === 'open' && i.assignee).length,
+              notStarted: issues.filter(i => i.state === 'open' && !i.assignee).length,
+              bugs: issues.filter(i => i.labels.some(l => l.name === 'bug')).length,
+              features: issues.filter(i => i.labels.some(l => l.name === 'enhancement')).length,
+            };
+
+            // Calculate story points
+            let totalPoints = 0;
+            let completedPoints = 0;
+
+            for (const issue of issues) {
+              const sizeLabel = issue.labels.find(l => l.name.startsWith('size/'));
+              let points = 0;
+
+              if (sizeLabel) {
+                const size = sizeLabel.name.replace('size/', '');
+                points = {
+                  'XS': 1,
+                  'S': 2,
+                  'M': 5,
+                  'L': 8,
+                  'XL': 13
+                }[size] || 0;
+              }
+
+              totalPoints += points;
+              if (issue.state === 'closed') {
+                completedPoints += points;
+              }
+            }
+
+            metrics.totalPoints = totalPoints;
+            metrics.completedPoints = completedPoints;
+            metrics.velocity = completedPoints;
+
+            return metrics;
+
+      - name: Collect PR metrics
+        id: prs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const startDate = new Date('${{ steps.dates.outputs.start_date }}');
+            const endDate = new Date('${{ steps.dates.outputs.end_date }}');
+
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100
+            });
+
+            // Filter PRs within sprint dates
+            const sprintPRs = prs.filter(pr => {
+              const createdAt = new Date(pr.created_at);
+              return createdAt >= startDate && createdAt <= endDate;
+            });
+
+            // Calculate metrics
+            const prMetrics = {
+              total: sprintPRs.length,
+              merged: sprintPRs.filter(pr => pr.merged_at).length,
+              closed: sprintPRs.filter(pr => pr.state === 'closed' && !pr.merged_at).length,
+              open: sprintPRs.filter(pr => pr.state === 'open').length
+            };
+
+            // Calculate average review time
+            let totalReviewTime = 0;
+            let reviewedPRs = 0;
+
+            for (const pr of sprintPRs.filter(pr => pr.merged_at)) {
+              const created = new Date(pr.created_at);
+              const merged = new Date(pr.merged_at);
+              const reviewTime = (merged - created) / (1000 * 60 * 60); // hours
+              totalReviewTime += reviewTime;
+              reviewedPRs++;
+            }
+
+            prMetrics.avgReviewTime = reviewedPRs > 0
+              ? (totalReviewTime / reviewedPRs).toFixed(1)
+              : 0;
+
+            return prMetrics;
+
+      - name: Generate burndown data
+        id: burndown
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sprint = ${{ steps.dates.outputs.sprint_number }};
+            const startDate = new Date('${{ steps.dates.outputs.start_date }}');
+            const endDate = new Date('${{ steps.dates.outputs.end_date }}');
+
+            // Get all events for sprint issues
+            const sprintLabel = `sprint/${sprint}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: sprintLabel,
+              state: 'all',
+              per_page: 100
+            });
+
+            // Create daily burndown
+            const burndown = [];
+            const totalDays = 14;
+
+            for (let day = 0; day <= totalDays; day++) {
+              const date = new Date(startDate);
+              date.setDate(date.getDate() + day);
+
+              const openOnDay = issues.filter(issue => {
+                const created = new Date(issue.created_at);
+                const closed = issue.closed_at ? new Date(issue.closed_at) : null;
+
+                return created <= date && (!closed || closed > date);
+              }).length;
+
+              burndown.push({
+                day,
+                date: date.toISOString().split('T')[0],
+                remaining: openOnDay
+              });
+            }
+
+            return burndown;
+
+      - name: Create metrics report
+        id: report
+        run: |
+          cat > sprint-metrics.md << EOF
+          # Sprint ${{ steps.dates.outputs.sprint_number }} Metrics Report
+
+          **Period**: ${{ steps.dates.outputs.start_date }} to ${{ steps.dates.outputs.end_date }}
+
+          ## 📊 Sprint Overview
+
+          ### Issues
+          - **Total Issues**: ${{ fromJson(steps.issues.outputs.result).total }}
+          - **Completed**: ${{ fromJson(steps.issues.outputs.result).completed }}
+          - **In Progress**: ${{ fromJson(steps.issues.outputs.result).inProgress }}
+          - **Not Started**: ${{ fromJson(steps.issues.outputs.result).notStarted }}
+
+          ### Story Points
+          - **Committed**: ${{ fromJson(steps.issues.outputs.result).totalPoints }} points
+          - **Completed**: ${{ fromJson(steps.issues.outputs.result).completedPoints }} points
+          - **Velocity**: ${{ fromJson(steps.issues.outputs.result).velocity }} points
+
+          ### Issue Types
+          - **Bugs**: ${{ fromJson(steps.issues.outputs.result).bugs }}
+          - **Features**: ${{ fromJson(steps.issues.outputs.result).features }}
+
+          ## 🔄 Pull Requests
+
+          - **Total PRs**: ${{ fromJson(steps.prs.outputs.result).total }}
+          - **Merged**: ${{ fromJson(steps.prs.outputs.result).merged }}
+          - **Closed (not merged)**: ${{ fromJson(steps.prs.outputs.result).closed }}
+          - **Still Open**: ${{ fromJson(steps.prs.outputs.result).open }}
+          - **Avg Review Time**: ${{ fromJson(steps.prs.outputs.result).avgReviewTime }} hours
+
+          ## 📈 Completion Rate
+
+          \`\`\`
+          Issues: ${{ fromJson(steps.issues.outputs.result).completed }}/${{ fromJson(steps.issues.outputs.result).total }} ($(( ${{ fromJson(steps.issues.outputs.result).completed }} * 100 / ${{ fromJson(steps.issues.outputs.result).total }} ))%)
+          Points: ${{ fromJson(steps.issues.outputs.result).completedPoints }}/${{ fromJson(steps.issues.outputs.result).totalPoints }} ($(( ${{ fromJson(steps.issues.outputs.result).completedPoints }} * 100 / ${{ fromJson(steps.issues.outputs.result).totalPoints }} ))%)
+          \`\`\`
+
+          ## 🎯 Sprint Goals Achievement
+
+          Review sprint goals in the planning discussion to assess achievement.
+
+          ## 📝 Notes
+
+          - This report is automatically generated
+          - For detailed analysis, check GitHub Projects
+          - Discuss these metrics in the sprint retrospective
+
+          ---
+
+          *Generated on $(date +"%Y-%m-%d %H:%M:%S UTC")*
+          EOF
+
+      - name: Post metrics to discussion
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('sprint-metrics.md', 'utf8');
+
+            // Create a new discussion with the metrics
+            await github.rest.discussions.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              category_id: 'DIC_kwDONSXx4M4CjT5h', // Metrics category
+              title: `Sprint ${{ steps.dates.outputs.sprint_number }} Metrics Report`,
+              body: report
+            });
+
+      - name: Update project insights
+        if: success()
+        run: |
+          echo "✅ Sprint metrics collected and posted successfully"
+          echo "📊 Check the Discussions tab for the full report"
+
+  velocity-trend:
+    name: Calculate Velocity Trend
+    runs-on: ubuntu-latest
+    needs: collect-metrics
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Calculate velocity trend
+        id: trend
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get last 5 sprints of data
+            const discussions = await github.rest.discussions.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              category_slug: 'metrics'
+            });
+
+            // Extract velocity from previous reports
+            const velocities = discussions.data
+              .filter(d => d.title.includes('Sprint') && d.title.includes('Metrics'))
+              .slice(0, 5)
+              .map(d => {
+                const match = d.body.match(/Velocity: (\d+) points/);
+                return match ? parseInt(match[1]) : 0;
+              });
+
+            // Calculate trend
+            const avgVelocity = velocities.reduce((a, b) => a + b, 0) / velocities.length;
+            const trend = velocities[0] > avgVelocity ? 'increasing' : 'stable';
+
+            console.log(`Average velocity: ${avgVelocity}`);
+            console.log(`Trend: ${trend}`);
+
+            return { avgVelocity, trend };
+
+      - name: Update velocity badge
+        if: success()
+        run: |
+          echo "📈 Velocity trend: ${{ fromJson(steps.trend.outputs.result).trend }}"
+          echo "📊 Average velocity: ${{ fromJson(steps.trend.outputs.result).avgVelocity }} points"

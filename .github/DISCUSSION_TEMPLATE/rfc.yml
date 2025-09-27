@@ -1,0 +1,130 @@
+title: "[RFC] "
+labels: ["rfc", "architecture"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Request for Comments (RFC)
+        Use this template to propose significant changes to the codebase or processes.
+
+  - type: input
+    id: author
+    attributes:
+      label: Author
+      description: Your GitHub username
+      placeholder: "@username"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      options:
+        - Draft
+        - Review
+        - Final Comment Period
+        - Accepted
+        - Rejected
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One paragraph explanation of the proposal
+      placeholder: Briefly describe what you're proposing and why
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why are we doing this? What problem does it solve?
+      placeholder: |
+        - Current pain points
+        - Benefits of the change
+        - Who will be affected
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Detailed Design
+      description: The technical details of your proposal
+      placeholder: |
+        ### Current State
+        How things work today
+
+        ### Proposed Change
+        What we're proposing
+
+        ### Implementation Plan
+        Step-by-step approach
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other solutions did you consider?
+      placeholder: |
+        ### Option A
+        - Description
+        - Pros
+        - Cons
+
+        ### Option B
+        - Description
+        - Pros
+        - Cons
+    validations:
+      required: true
+
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Trade-offs
+      description: What are we gaining and losing?
+      placeholder: |
+        - Benefits:
+        - Drawbacks:
+        - Risks:
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Success Metrics
+      description: How will we measure success?
+      placeholder: |
+        - Metric 1: Target value
+        - Metric 2: Target value
+        - Timeline for evaluation
+    validations:
+      required: false
+
+  - type: input
+    id: timeline
+    attributes:
+      label: Implementation Timeline
+      description: Estimated time to implement if approved
+      placeholder: "e.g., 2 weeks, 1 sprint, 1 month"
+    validations:
+      required: false
+
+  - type: textarea
+    id: questions
+    attributes:
+      label: Open Questions
+      description: What still needs to be figured out?
+      placeholder: |
+        - [ ] Question 1
+        - [ ] Question 2
+    validations:
+      required: false
