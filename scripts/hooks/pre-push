@@ -19,17 +19,28 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Running pre-push CI validation...${NC}"
 
+# Cache file for Gradle tasks
+CACHE_FILE=".gradle/task-cache"
+
 # Function to check if a Gradle task exists
 check_gradle_task() {
     local task=$1
-    local cache_file="$CACHE_DIR/gradle-tasks.txt"
-
-    # Create cache directory if it doesn't exist
-    mkdir -p "$CACHE_DIR"
-
-    # Update cache if it doesn't exist or is older than 1 hour
-    if [ ! -f "$cache_file" ] || [ "$(find "$cache_file" -mmin +60 2>/dev/null | wc -l)" -gt 0 ]; then
-        ./gradlew tasks --all 2>/dev/null | awk '/^([a-zA-Z:_-]+)[[:space:]]+-/{print $1}' > "$cache_file" || : > "$cache_file"
+    # Normalize task name - remove leading colon for cache lookup
+    local normalized_task="${task#:}"
+    local task_pattern="^:*$normalized_task "
+    
+    # Use cache if available and fresh
+    if [ -f "$CACHE_FILE" ] && is_cache_fresh; then
+        if ! grep -q "$task_pattern" "$CACHE_FILE" 2>/dev/null; then
+            echo -e "${RED}❌ Gradle task '$task' not found!${NC}" >&2
+            return 1
+        fi
+    else
+        # Fall back to direct query (use normalized task for consistency)
+        if ! ./gradlew tasks --all 2>/dev/null | grep -q "$task_pattern"; then
+            echo -e "${RED}❌ Gradle task '$task' not found!${NC}" >&2
+            return 1
+        fi
     fi
 
     grep -qx "$task" "$cache_file"
@@ -83,15 +94,36 @@ if [ -f scripts/validate-action-versions.sh ]; then
     fi
 fi
 
-# 3. Extract and validate all Gradle tasks from workflows
+# 3. Check cache freshness (portable way)
+is_cache_fresh() {
+    python3 -c "
+import os, sys, time
+cache_file = '$CACHE_FILE'
+if not os.path.exists(cache_file):
+    sys.exit(1)
+mtime = os.path.getmtime(cache_file)
+now = time.time()
+fresh = (now - mtime) < 3600
+sys.exit(0 if fresh else 1)
+" 2>/dev/null
+}
+
+# Refresh cache if needed
+if ! is_cache_fresh; then
+    echo -e "${YELLOW}🔄 Refreshing Gradle task cache...${NC}"
+    mkdir -p "$(dirname "$CACHE_FILE")"
+    ./gradlew tasks --all > "$CACHE_FILE" 2>/dev/null || true
+fi
+
+# 4. Extract and validate all Gradle tasks from workflows
 echo -e "${YELLOW}🔨 Validating Gradle tasks in workflows...${NC}"
-WORKFLOW_TASKS=$(
-  grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
-  sed -n 's/.*gradlew[[:space:]]\+\(.*\)$/\1/p' | \
-  tr ' ' '\n' | grep -E '^[a-zA-Z:_-]+$' | \
-  grep -vE '^--?[^ ]+$' | \
-  sort -u || true
-)
+
+WORKFLOW_TASKS=$(grep -h "gradlew" .github/workflows/*.yml 2>/dev/null | \
+    grep -oE "gradlew\s+[a-zA-Z0-9:_-]+(\s|$)" | \
+    sed 's/gradlew\s*//' | \
+    sed 's/\s*$//' | \
+    tr -d '\r' | \
+    sort -u || true)
 
 INVALID_TASKS=""
 for task in $WORKFLOW_TASKS; do

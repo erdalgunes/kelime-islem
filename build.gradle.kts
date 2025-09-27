@@ -43,7 +43,7 @@ sonarqube {
         property("sonar.host.url", "https://sonarcloud.io")
         
         // Source code configuration - includes design-system module
-        property("sonar.sources", "composeApp/src/commonMain,composeApp/src/androidMain,design-system/src/commonMain")
+        property("sonar.sources", "composeApp/src/commonMain,design-system/src/commonMain")
         property("sonar.tests", "composeApp/src/commonTest,composeApp/src/androidUnitTest")
         property("sonar.java.binaries", "composeApp/build/classes")
         
@@ -59,7 +59,7 @@ sonarqube {
         property("sonar.junit.reportPaths", "composeApp/build/test-results/testDebugUnitTest")
         
         // Exclusions - UI files, generated code, and design-system from coverage
-        property("sonar.exclusions", "**/*Test.kt,**/*Spec.kt,**/test/**,**/androidTest/**,**/commonTest/**,**/ui/**,**/*Screen.kt,**/App.kt,**/build/**,**/*.gradle.kts,**/buildSrc/**,**/build-logic/**,**/design-system/**")
+        property("sonar.exclusions", "**/*Test.kt,**/*Spec.kt,**/test/**,**/androidTest/**,**/commonTest/**,**/androidUnitTest/**,**/ui/**,**/*Screen.kt,**/App.kt,**/build/**,**/*.gradle.kts,**/buildSrc/**,**/build-logic/**,**/design-system/**")
         
         // Coverage exclusions (UI components)
         property("sonar.coverage.exclusions", "**/ui/**,**/*Screen.kt,**/App.kt,**/*Activity.kt,**/Platform.*.kt")
