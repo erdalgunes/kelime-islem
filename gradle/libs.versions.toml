@@ -19,8 +19,8 @@ espresso = "3.7.0"
 androidGradlePlugin = "8.13.0"
 androidTools = "31.13.0"
 androidMinSdk = "24"
-androidCompileSdk = "36"
-androidTargetSdk = "36"
+androidCompileSdk = "35"
+androidTargetSdk = "35"
 
 # Compose Multiplatform
 compose = "1.8.0"
