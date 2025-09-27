@@ -54,6 +54,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: 'platform-tools platforms;android-36 build-tools;34.0.0'
+
     - name: Setup Gradle with caching
       uses: gradle/actions/setup-gradle@v4
       with:
@@ -133,6 +138,11 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: 'platform-tools platforms;android-36 build-tools;34.0.0'
 
     - name: Setup Gradle with caching
       uses: gradle/actions/setup-gradle@v4
