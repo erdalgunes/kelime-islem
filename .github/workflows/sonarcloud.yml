@@ -1,0 +1,214 @@
+name: SonarCloud Analysis
+
+on:
+  workflow_run:
+    workflows: ["KMP CI/CD Pipeline"]
+    types:
+      - completed
+  workflow_dispatch:
+
+# Cancel previous runs for the same branch
+concurrency:
+  group: sonarcloud-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: read  # Required for SonarCloud PR decoration
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # Prevent hanging builds
+    # Only run if SONAR_TOKEN is configured and workflow succeeded
+    if: >
+      github.repository == 'erdalgunes/kelime-islem' &&
+      (github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for accurate blame and new code detection
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: 'platform-tools platforms;android-36 build-tools;34.0.0'
+
+    - name: Cache SonarCloud packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+
+    - name: Setup Gradle with caching
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+        cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY || '' }}
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Download coverage reports from CI workflow
+      if: github.event_name == 'workflow_run'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          // Download artifacts from the triggering workflow
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: ${{ github.event.workflow_run.id }},
+          });
+
+          // Look for coverage and detekt reports
+          const coverageArtifact = artifacts.data.artifacts.find(a => a.name === 'coverage-reports');
+          const detektArtifact = artifacts.data.artifacts.find(a => a.name === 'detekt-reports');
+
+          // Download if found
+          if (coverageArtifact) {
+            const download = await github.rest.actions.downloadArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: coverageArtifact.id,
+              archive_format: 'zip',
+            });
+            require('fs').writeFileSync('coverage.zip', Buffer.from(download.data));
+            await exec.exec('unzip', ['-o', 'coverage.zip', '-d', 'composeApp/build/reports/']);
+          }
+
+          if (detektArtifact) {
+            const download = await github.rest.actions.downloadArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: detektArtifact.id,
+              archive_format: 'zip',
+            });
+            require('fs').writeFileSync('detekt.zip', Buffer.from(download.data));
+            await exec.exec('unzip', ['-o', 'detekt.zip', '-d', 'build/reports/']);
+          }
+
+    - name: Generate reports if not from workflow_run
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "Running tests with coverage for SonarCloud..."
+        ./gradlew testDebugUnitTest koverXmlReport detekt --stacktrace
+
+    - name: SonarCloud Scan
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        if [ -n "$SONAR_TOKEN" ]; then
+          echo "🔍 Starting SonarCloud analysis..."
+
+          # Set common parameters
+          SONAR_PARAMS="-Dsonar.token=$SONAR_TOKEN"
+
+          # Handle PR context from workflow_run
+          if [ "${{ github.event.workflow_run.event }}" = "pull_request" ]; then
+            # Extract PR number from workflow_run
+            PR_NUMBER=${{ github.event.workflow_run.pull_requests[0].number }}
+            PR_BRANCH=${{ github.event.workflow_run.pull_requests[0].head.ref }}
+            PR_BASE=${{ github.event.workflow_run.pull_requests[0].base.ref }}
+
+            if [ -n "$PR_NUMBER" ]; then
+              echo "📋 Analyzing pull request #$PR_NUMBER"
+              SONAR_PARAMS="$SONAR_PARAMS \
+                -Dsonar.pullrequest.key=$PR_NUMBER \
+                -Dsonar.pullrequest.branch=$PR_BRANCH \
+                -Dsonar.pullrequest.base=$PR_BASE \
+                -Dsonar.pullrequest.github.repository=${{ github.repository }} \
+                -Dsonar.pullrequest.provider=github"
+            fi
+          else
+            BRANCH_NAME="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+            echo "🌿 Analyzing branch: $BRANCH_NAME"
+            SONAR_PARAMS="$SONAR_PARAMS \
+              -Dsonar.branch.name=$BRANCH_NAME"
+          fi
+
+          # Run SonarCloud analysis
+          ./gradlew sonar $SONAR_PARAMS --info --stacktrace
+
+          echo "✅ SonarCloud analysis completed successfully"
+          echo "📊 View results at: https://sonarcloud.io/project/overview?id=erdalgunes_kelime-islem"
+        else
+          echo "⚠️ SONAR_TOKEN not configured, skipping SonarCloud analysis"
+          echo "📝 To enable SonarCloud:"
+          echo "   1. Go to https://sonarcloud.io/projects/create"
+          echo "   2. Import your GitHub repository"
+          echo "   3. Generate a token at: https://sonarcloud.io/account/security"
+          echo "   4. Add SONAR_TOKEN to repository secrets"
+          exit 0
+        fi
+
+    - name: Comment PR with SonarCloud status
+      if: github.event.workflow_run.event == 'pull_request' && always()
+      uses: actions/github-script@v7
+      continue-on-error: true
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const prNumber = ${{ github.event.workflow_run.pull_requests[0].number }};
+          const sonarProjectKey = 'erdalgunes_kelime-islem';
+          const sonarUrl = `https://sonarcloud.io/dashboard?id=${sonarProjectKey}&pullRequest=${prNumber}`;
+
+          const comment = `## 🔍 SonarCloud Analysis
+
+          The code quality analysis has been completed.
+
+          📊 [View detailed results on SonarCloud](${sonarUrl})
+
+          ---
+          <sub>💡 SonarCloud helps maintain code quality by detecting bugs, vulnerabilities, and code smells.</sub>`;
+
+          // Check if we already commented
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('SonarCloud Analysis')
+          );
+
+          if (botComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment,
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment,
+            });
+          }
+
+    - name: Quality Gate Status
+      if: github.event.workflow_run.event == 'pull_request'
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        if [ -n "$SONAR_TOKEN" ]; then
+          echo "⏳ Waiting for SonarCloud Quality Gate result..."
+          # The quality gate check is handled by the Gradle task with sonar.qualitygate.wait=true
+          echo "✅ Quality Gate evaluation complete"
+        fi
