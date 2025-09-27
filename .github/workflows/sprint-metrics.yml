@@ -306,14 +306,100 @@ jobs:
             const fs = require('fs');
             const report = fs.readFileSync('sprint-metrics.md', 'utf8');
 
-            // Create a new discussion with the metrics
-            await github.rest.discussions.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              category_id: 'DIC_kwDONSXx4M4CjT5h', // Metrics category
-              title: `Sprint ${{ steps.dates.outputs.sprint_number }} Metrics Report`,
-              body: report
-            });
+            // Dynamically resolve discussion category
+            let categoryId = null;
+            const targetCategoryName = 'Metrics';
+            const alternativeCategoryNames = ['General', 'Announcements'];
+
+            try {
+              // Get all discussion categories for the repository
+              const query = `
+                query($owner: String!, $name: String!) {
+                  repository(owner: $owner, name: $name) {
+                    discussionCategories(first: 100) {
+                      nodes {
+                        id
+                        name
+                        slug
+                      }
+                    }
+                  }
+                }
+              `;
+
+              const result = await github.graphql(query, {
+                owner: context.repo.owner,
+                name: context.repo.repo
+              });
+
+              const categories = result.repository.discussionCategories.nodes;
+              console.log(`Found ${categories.length} discussion categories`);
+
+              // Try to find the target category
+              let category = categories.find(c => c.name === targetCategoryName);
+
+              // If not found, try alternative category names
+              if (!category) {
+                for (const altName of alternativeCategoryNames) {
+                  category = categories.find(c => c.name === altName);
+                  if (category) {
+                    console.log(`Using alternative category: ${altName}`);
+                    break;
+                  }
+                }
+              }
+
+              // If still not found, use the first available category
+              if (!category && categories.length > 0) {
+                category = categories[0];
+                console.log(`Using first available category: ${category.name}`);
+              }
+
+              if (category) {
+                categoryId = category.id;
+                console.log(`Selected category: ${category.name} (${category.id})`);
+              } else {
+                throw new Error('No discussion categories found in repository');
+              }
+
+              // Create the discussion
+              await github.graphql(`
+                mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+                  createDiscussion(input: {
+                    repositoryId: $repositoryId,
+                    categoryId: $categoryId,
+                    title: $title,
+                    body: $body
+                  }) {
+                    discussion {
+                      id
+                      url
+                    }
+                  }
+                }
+              `, {
+                repositoryId: context.payload.repository.node_id,
+                categoryId: categoryId,
+                title: `Sprint ${{ steps.dates.outputs.sprint_number }} Metrics Report`,
+                body: report
+              });
+
+              console.log('✅ Metrics report posted to discussions successfully');
+            } catch (error) {
+              // If discussions are not enabled or categories don't exist, create an issue instead
+              console.log(`Could not post to discussions: ${error.message}`);
+              console.log('Falling back to creating an issue instead...');
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Sprint ${{ steps.dates.outputs.sprint_number }} Metrics Report`,
+                body: report,
+                labels: ['metrics', 'sprint-report']
+              });
+
+              console.log('✅ Metrics report posted as an issue');
+            }
 
       - name: Update project insights
         if: success()
@@ -334,30 +420,58 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Get last 5 sprints of data
-            const discussions = await github.rest.discussions.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              category_slug: 'metrics'
-            });
+            try {
+              // Try to get discussions first
+              const discussions = await github.rest.discussions.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo
+              }).catch(() => ({ data: [] }));
 
-            // Extract velocity from previous reports
-            const velocities = discussions.data
-              .filter(d => d.title.includes('Sprint') && d.title.includes('Metrics'))
-              .slice(0, 5)
-              .map(d => {
-                const match = d.body.match(/Velocity: (\d+) points/);
-                return match ? parseInt(match[1]) : 0;
+              // Also check issues as fallback
+              const issues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: 'metrics,sprint-report',
+                state: 'all',
+                per_page: 10
               });
 
-            // Calculate trend
-            const avgVelocity = velocities.reduce((a, b) => a + b, 0) / velocities.length;
-            const trend = velocities[0] > avgVelocity ? 'increasing' : 'stable';
+              // Combine both sources
+              const allReports = [
+                ...discussions.data.filter(d => d.title.includes('Sprint') && d.title.includes('Metrics')),
+                ...issues.data.filter(i => i.title.includes('Sprint') && i.title.includes('Metrics'))
+              ];
 
-            console.log(`Average velocity: ${avgVelocity}`);
-            console.log(`Trend: ${trend}`);
+              // Extract velocity from previous reports
+              const velocities = allReports
+                .slice(0, 5)
+                .map(item => {
+                  const body = item.body || '';
+                  const match = body.match(/Velocity:\s*(\d+)\s*points/);
+                  return match ? parseInt(match[1]) : 0;
+                })
+                .filter(v => v > 0);  // Only include non-zero velocities
 
-            return { avgVelocity, trend };
+              // Calculate trend if we have data
+              if (velocities.length > 0) {
+                const avgVelocity = velocities.reduce((a, b) => a + b, 0) / velocities.length;
+                const trend = velocities.length > 1 && velocities[0] > avgVelocity
+                  ? 'increasing'
+                  : 'stable';
+
+                console.log(`Found ${velocities.length} previous sprints`);
+                console.log(`Average velocity: ${avgVelocity.toFixed(1)}`);
+                console.log(`Trend: ${trend}`);
+
+                return { avgVelocity: avgVelocity.toFixed(1), trend, hasData: true };
+              } else {
+                console.log('No previous sprint data found');
+                return { avgVelocity: 0, trend: 'no data', hasData: false };
+              }
+            } catch (error) {
+              console.log(`Error calculating velocity trend: ${error.message}`);
+              return { avgVelocity: 0, trend: 'error', hasData: false };
+            }
 
       - name: Update velocity badge
         if: success()

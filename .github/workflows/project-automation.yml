@@ -207,10 +207,80 @@ jobs:
               day: 'numeric'
             });
 
-            await github.rest.discussions.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              category_id: 'DIC_kwDONSXx4M4CjT5g', // Daily Standups category
-              title: `Daily Standup - ${today}`,
-              body: `## Daily Standup - ${today}\n\nPlease share your updates:\n\n### Template\n\\\`\\\`\\\`markdown\n## @your-username\n\n### Yesterday\n- What you completed\n\n### Today\n- What you're working on\n\n### Blockers\n- Any impediments\n\\\`\\\`\\\`\n\nRemember to:\n- Be specific about issue numbers\n- Mention any PRs needing review\n- Flag blockers early\n- Tag team members if you need help`
-            });
+            try {
+              // Dynamically resolve discussion category
+              const query = `
+                query($owner: String!, $name: String!) {
+                  repository(owner: $owner, name: $name) {
+                    discussionCategories(first: 100) {
+                      nodes {
+                        id
+                        name
+                        slug
+                      }
+                    }
+                  }
+                }
+              `;
+
+              const result = await github.graphql(query, {
+                owner: context.repo.owner,
+                name: context.repo.repo
+              });
+
+              const categories = result.repository.discussionCategories.nodes;
+
+              // Try to find Daily Standups category, fall back to General or first available
+              let category = categories.find(c =>
+                c.name === 'Daily Standups' ||
+                c.slug === 'daily-standups'
+              );
+
+              if (!category) {
+                category = categories.find(c =>
+                  c.name === 'General' ||
+                  c.name === 'Announcements'
+                ) || categories[0];
+              }
+
+              if (!category) {
+                throw new Error('No discussion categories found');
+              }
+
+              // Create the standup discussion
+              await github.graphql(`
+                mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+                  createDiscussion(input: {
+                    repositoryId: $repositoryId,
+                    categoryId: $categoryId,
+                    title: $title,
+                    body: $body
+                  }) {
+                    discussion {
+                      id
+                      url
+                    }
+                  }
+                }
+              `, {
+                repositoryId: context.payload.repository.node_id,
+                categoryId: category.id,
+                title: `Daily Standup - ${today}`,
+                body: `## Daily Standup - ${today}\n\nPlease share your updates:\n\n### Template\n\\\`\\\`\\\`markdown\n## @your-username\n\n### Yesterday\n- What you completed\n\n### Today\n- What you're working on\n\n### Blockers\n- Any impediments\n\\\`\\\`\\\`\n\nRemember to:\n- Be specific about issue numbers\n- Mention any PRs needing review\n- Flag blockers early\n- Tag team members if you need help`
+              });
+
+              console.log(`✅ Daily standup posted to ${category.name} category`);
+            } catch (error) {
+              // Fall back to creating an issue if discussions not available
+              console.log(`Could not post to discussions: ${error.message}`);
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Daily Standup - ${today}`,
+                body: `## Daily Standup - ${today}\n\nPlease share your updates:\n\n### Template\n\`\`\`markdown\n## @your-username\n\n### Yesterday\n- What you completed\n\n### Today\n- What you're working on\n\n### Blockers\n- Any impediments\n\`\`\`\n\nRemember to:\n- Be specific about issue numbers\n- Mention any PRs needing review\n- Flag blockers early\n- Tag team members if you need help`,
+                labels: ['standup', 'daily']
+              });
+
+              console.log('✅ Daily standup posted as an issue');
+            }
