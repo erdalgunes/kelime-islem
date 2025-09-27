@@ -17,6 +17,11 @@ permissions:
   pull-requests: read
   discussions: write
 
+env:
+  # Sprint configuration - can be overridden via repository variables
+  SPRINT_ANCHOR_DATE: ${{ vars.SPRINT_ANCHOR_DATE || '2025-01-01' }}
+  SPRINT_DURATION_DAYS: ${{ vars.SPRINT_DURATION_DAYS || '14' }}
+
 jobs:
   collect-metrics:
     name: Collect Sprint Metrics
@@ -33,19 +38,24 @@ jobs:
           import os
           from datetime import datetime, timedelta, timezone
 
-          # Project anchor date - all sprints calculated from this (UTC)
-          ANCHOR_DATE = datetime(2025, 1, 1, tzinfo=timezone.utc)
+          # Project anchor date - configurable via repository variables
+          anchor_date_str = os.environ.get('SPRINT_ANCHOR_DATE', '2025-01-01')
+          sprint_duration = int(os.environ.get('SPRINT_DURATION_DAYS', '14'))
+
+          # Parse anchor date (assumes YYYY-MM-DD format)
+          year, month, day = map(int, anchor_date_str.split('-'))
+          ANCHOR_DATE = datetime(year, month, day, tzinfo=timezone.utc)
 
           if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch':
               sprint = int('${{ github.event.inputs.sprint_number }}')
           else:
               # Calculate current sprint based on today's date (UTC)
               days_since_anchor = (datetime.now(timezone.utc) - ANCHOR_DATE).days
-              sprint = (days_since_anchor // 14) + 1
+              sprint = (days_since_anchor // sprint_duration) + 1
 
-          # Calculate sprint start and end dates
-          sprint_start = ANCHOR_DATE + timedelta(days=(sprint - 1) * 14)
-          sprint_end = sprint_start + timedelta(days=13)
+          # Calculate sprint start and end dates using configurable duration
+          sprint_start = ANCHOR_DATE + timedelta(days=(sprint - 1) * sprint_duration)
+          sprint_end = sprint_start + timedelta(days=sprint_duration - 1)
 
           # Write to GitHub output
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
@@ -134,18 +144,42 @@ jobs:
               per_page: 100
             });
 
-            // Filter PRs that were active during the sprint
-            // Include if created, merged, or closed during the sprint window
-            const sprintPRs = prs.filter(pr => {
+            // Enhanced PR Sprint Attribution Logic
+            // Problem: PRs can span multiple sprints (created in sprint 1, merged in sprint 2)
+            // Solution: Attribute each PR to exactly ONE sprint based on priority:
+            //   1. Merged date (highest priority) - PR delivered value in this sprint
+            //   2. Closed date (if not merged) - PR was resolved in this sprint
+            //   3. Created date (if still open) - PR work started in this sprint
+            // This prevents double-counting and provides accurate velocity metrics
+            const sprintPRs = [];
+            const processedPRNumbers = new Set(); // Track PRs to prevent double-counting
+
+            for (const pr of prs) {
               const createdAt = new Date(pr.created_at);
               const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
               const closedAt = pr.closed_at ? new Date(pr.closed_at) : null;
 
-              // PR is relevant if any of these dates fall within the sprint
-              return (createdAt >= startDate && createdAt <= endDate) ||
-                     (mergedAt && mergedAt >= startDate && mergedAt <= endDate) ||
-                     (closedAt && closedAt >= startDate && closedAt <= endDate);
-            });
+              // Determine which sprint this PR primarily belongs to
+              // Priority: merged > closed > created
+              let primarySprintMatch = false;
+
+              if (mergedAt && mergedAt >= startDate && mergedAt <= endDate) {
+                // PR was merged in this sprint - primary attribution
+                primarySprintMatch = true;
+              } else if (closedAt && !mergedAt && closedAt >= startDate && closedAt <= endDate) {
+                // PR was closed (not merged) in this sprint
+                primarySprintMatch = true;
+              } else if (createdAt >= startDate && createdAt <= endDate && pr.state === 'open') {
+                // PR was created in this sprint and is still open
+                primarySprintMatch = true;
+              }
+
+              // Only include if this PR belongs to this sprint and hasn't been counted yet
+              if (primarySprintMatch && !processedPRNumbers.has(pr.number)) {
+                sprintPRs.push(pr);
+                processedPRNumbers.add(pr.number);
+              }
+            }
 
             // Calculate metrics based on activity within the sprint window
             const prMetrics = {
@@ -512,3 +546,71 @@ jobs:
         run: |
           echo "📈 Velocity trend: ${{ fromJson(steps.trend.outputs.result).trend }}"
           echo "📊 Average velocity: ${{ fromJson(steps.trend.outputs.result).avgVelocity }} points"
+
+  notify-on-failure:
+    name: Notify on Workflow Failure
+    runs-on: ubuntu-latest
+    needs: collect-metrics
+    if: failure()
+    steps:
+      - name: Create failure notification issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflowUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const date = new Date().toISOString().split('T')[0];
+
+            // Create an issue to notify about the failure
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Sprint Metrics Workflow Failed - ${date}`,
+              body: `## Workflow Failure Notification
+
+            The Sprint Metrics workflow has failed to complete successfully.
+
+            **Workflow Run**: [View Failed Run](${workflowUrl})
+            **Date**: ${date}
+            **Triggered by**: ${context.eventName}
+
+            ### Action Required
+            Please review the workflow logs to identify the issue and take corrective action.
+
+            ### Common Issues
+            - API rate limits exceeded
+            - Missing permissions for discussions/issues
+            - Invalid sprint configuration
+            - GraphQL query failures
+
+            @erdalgunes - Please investigate this failure.`,
+              labels: ['bug', 'automation', 'urgent']
+            });
+
+            console.log('✅ Failure notification issue created');
+
+      - name: Post to Slack (if configured)
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -X POST $SLACK_WEBHOOK_URL \
+              -H 'Content-Type: application/json' \
+              -d "{
+                \"text\": \"🚨 Sprint Metrics workflow failed!\",
+                \"attachments\": [{
+                  \"color\": \"danger\",
+                  \"title\": \"Workflow Failure\",
+                  \"text\": \"The Sprint Metrics collection failed. Please check the workflow logs.\",
+                  \"fields\": [{
+                    \"title\": \"Repository\",
+                    \"value\": \"${{ github.repository }}\",
+                    \"short\": true
+                  }, {
+                    \"title\": \"Run ID\",
+                    \"value\": \"${{ github.run_id }}\",
+                    \"short\": true
+                  }]
+                }]
+              }"
+          fi

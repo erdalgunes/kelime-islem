@@ -49,22 +49,45 @@ jobs:
             const projectId = '${{ env.PROJECT_ID }}';
             const itemId = '${{ github.event.issue.node_id }}';
 
+            // Helper function to retry operations with exponential backoff
+            async function retryWithBackoff(operation, maxRetries = 3) {
+              let lastError;
+              for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                  return await operation();
+                } catch (error) {
+                  lastError = error;
+                  if (attempt < maxRetries) {
+                    const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+                    console.log(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                  }
+                }
+              }
+              throw lastError;
+            }
+
             try {
-              // First, add the issue to the project if not already added
-              const addResponse = await github.graphql(`
+              // GraphQL Mutation: Add issue to project board
+              // This mutation ensures the issue is added to the project. If already present, it returns the existing item.
+              // Using retryWithBackoff to handle transient API failures (rate limits, network issues)
+              const addResponse = await retryWithBackoff(async () =>
+                github.graphql(`
                 mutation($projectId: ID!, $contentId: ID!) {
                   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
                     item {
-                      id
+                      id  # We need this ID to update the status field later
                     }
                   }
                 }
               `, {
                 projectId,
                 contentId: itemId
-              });
+              }));
 
-              // Get the project field for Status
+              // GraphQL Query: Fetch project field metadata
+              // This query retrieves all fields from the project, specifically looking for the "Status" field
+              // and its available options (e.g., "To Do", "In Progress", "Done")
               const projectData = await github.graphql(`
                 query($projectId: ID!) {
                   node(id: $projectId) {
