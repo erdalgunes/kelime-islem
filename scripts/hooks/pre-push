@@ -77,14 +77,29 @@ run_parallel() {
     local -a pids=()
 
     echo "  Starting ${#tasks[@]} parallel tasks..."
+
+    # Pick a timeout binary: GNU timeout or, on macOS with coreutils installed, gtimeout
+    local TIMEOUT_BIN=""
+    if command -v timeout >/dev/null 2>&1; then
+        TIMEOUT_BIN=timeout
+    elif command -v gtimeout >/dev/null 2>&1; then
+        TIMEOUT_BIN=gtimeout
+    fi
+
     for i in "${!tasks[@]}"; do
         {
-            timeout "$TASK_TIMEOUT" bash -c "${tasks[$i]}"
+            if [ -n "$TIMEOUT_BIN" ]; then
+                "$TIMEOUT_BIN" "$TASK_TIMEOUT" bash -c "${tasks[$i]}"
+            else
+                bash -c "${tasks[$i]}"
+            fi
         } &
         pids+=($!)
     done
 
     # Wait for all tasks to complete and track failures
+    # …rest of function…
+}
     local failed_tasks=()
     for i in "${!pids[@]}"; do
         if ! wait "${pids[$i]}"; then
