@@ -2,7 +2,7 @@
 
 A modern, mobile-first Kotlin Multiplatform word game featuring a comprehensive design system optimized for Turkish language support.
 
-[![CI](https://github.com/erdalgunes/kelime-islem/actions/workflows/ci.yml/badge.svg)](https://github.com/erdalgunes/kelime-islem/actions/workflows/ci.yml)
+[![CI](https://github.com/erdalgunes/kelime-islem/actions/workflows/kmp-ci.yml/badge.svg)](https://github.com/erdalgunes/kelime-islem/actions/workflows/kmp-ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-98.9%25-brightgreen)](https://github.com/erdalgunes/kelime-islem)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=erdalgunes_kelime-islem&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=erdalgunes_kelime-islem)
 [![SonarCloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=erdalgunes_kelime-islem&metric=coverage)](https://sonarcloud.io/summary/new_code?id=erdalgunes_kelime-islem)
