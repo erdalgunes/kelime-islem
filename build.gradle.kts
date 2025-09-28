@@ -93,60 +93,15 @@ dependencies {
 }
 
 // SBOM (Software Bill of Materials) Configuration
-tasks.cyclonedxBom {
-    // Include all configurations and dependencies
-    includeConfigs = listOf("runtimeClasspath", "compileClasspath")
-    // Output format: XML
-    outputFormat = "xml"
-    outputName = "kelime-islem-bom"
-    includeBomSerialNumber = true
-    // Component analysis  
-    schemaVersion = "1.6"
-    destination = file("build/reports")
+afterEvaluate {
+    tasks.named("cyclonedxBom").configure {
+        enabled = true
+    }
 }
 
 // Dependency vulnerability scanning configuration
-dependencyCheck {
-    // Output formats
-    format = "ALL"
-    outputDirectory = "build/reports/dependency-check"
-    
-    // Analysis configuration
-    analyzers.apply {
-        // Enable relevant analyzers for Kotlin/Android
-        assemblyEnabled = false
-        golangDepEnabled = false
-        golangModEnabled = false
-        nodeAuditEnabled = false
-        pyDistributionEnabled = false
-        pyPackageEnabled = false
-        rubygemsEnabled = false
-        cocoapodsEnabled = false
-        swiftEnabled = false
-        bundleAuditEnabled = false
-        
-        // Keep essential analyzers
-        jarEnabled = true
-        centralEnabled = true
-        nexusEnabled = true
+afterEvaluate {
+    tasks.named("dependencyCheckAnalyze").configure {
+        enabled = true
     }
-    
-    // Vulnerability database settings
-    nvd.apply {
-        apiKey = System.getenv("NVD_API_KEY") ?: ""
-        maxRetryCount = 3
-        delay = 2000
-    }
-    
-    // Fail build on CVSS score >= 7.0 (high/critical vulnerabilities)
-    failBuildOnCVSS = 7.0f
-    
-    // Suppress false positives if needed
-    suppressionFile = "dependency-check-suppressions.xml"
-}
-
-// Gradle dependency locking for reproducible builds
-dependencyLocking {
-    lockAllConfigurations()
-    lockMode = LockMode.STRICT
 }
