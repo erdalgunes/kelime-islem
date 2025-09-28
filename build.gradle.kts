@@ -15,6 +15,12 @@
  */
 
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+// Project metadata required for SBOM generation
+group = "com.erdalgunes.kelimeislem"
+version = "1.0.0"
+description = "Bir Kelime Bir İşlem - Turkish word game built with Kotlin Multiplatform and Compose"
+
 plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
@@ -105,3 +111,51 @@ afterEvaluate {
         enabled = true
     }
 }
+
+// Enhanced OWASP dependency check configuration
+dependencyCheck {
+    // Output formats
+    format = "ALL"
+    outputDirectory = "build/reports/dependency-check"
+    
+    // Analysis configuration
+    analyzers.apply {
+        // Enable relevant analyzers for Kotlin/Android
+        assemblyEnabled = false
+        golangDepEnabled = false
+        golangModEnabled = false
+        nodeAuditEnabled = false
+        pyDistributionEnabled = false
+        pyPackageEnabled = false
+        rubygemsEnabled = false
+        cocoapodsEnabled = false
+        swiftEnabled = false
+        bundleAuditEnabled = false
+        
+        // Keep essential analyzers
+        jarEnabled = true
+        centralEnabled = true
+        nexusEnabled = true
+    }
+    
+    // Vulnerability database settings
+    nvd.apply {
+        apiKey = System.getenv("NVD_API_KEY") ?: ""
+        maxRetryCount = 3
+        delay = 2000
+    }
+    
+    // Fail build on CVSS score >= 7.0 (high/critical vulnerabilities)
+    failBuildOnCVSS = 7.0f
+    
+    // Suppress false positives if needed
+    suppressionFile = "dependency-check-suppressions.xml"
+}
+
+// Gradle dependency locking for reproducible builds
+// Note: Dependency locking disabled temporarily until lock files are generated
+// To enable: run ./gradlew dependencies --write-locks
+// dependencyLocking {
+//     lockAllConfigurations()
+//     lockMode = LockMode.LENIENT  // Changed from STRICT to allow builds without lock files
+// }
