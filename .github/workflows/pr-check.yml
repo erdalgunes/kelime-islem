@@ -33,7 +33,7 @@ jobs:
     - name: Run comprehensive tests
       run: |
         echo "🧪 Running comprehensive test suite for PR..."
-        ./gradlew testDebugUnitTest koverXmlReport --build-cache --parallel || {
+        ./gradlew :composeApp:testDebugUnitTest koverXmlReport --build-cache --parallel || {
           echo "❌ Tests failed in PR! Please fix failing tests."
           exit 1
         }
@@ -42,7 +42,7 @@ jobs:
     - name: Run Android Lint
       run: |
         echo "🔍 Running Android Lint for PR changes..."
-        ./gradlew lintDebug --build-cache
+        ./gradlew :composeApp:lintDebug --build-cache
         echo "✅ Lint analysis completed"
     
     - name: Verify coverage report exists

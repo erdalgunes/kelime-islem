@@ -10,6 +10,14 @@ runs:
         distribution: 'temurin'
         check-latest: true  # Ensure latest patch version for security
     
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 35
+        target: default
+        arch: x86_64
+        profile: Nexus 6
+    
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
       with:
@@ -19,10 +27,10 @@ runs:
         gradle-home-cache-cleanup: true
         # Enable dependency verification and vulnerability database
         dependency-graph: generate-and-submit
-        # Enable build scan for better observability
-        build-scan-publish: true
-        build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
-        build-scan-terms-of-use-agree: "yes"
+        # Disable build scan for now to avoid authentication issues
+        # build-scan-publish: true
+        # build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
+        # build-scan-terms-of-use-agree: "yes"
         # Add security scanning
         gradle-executable-validation: true
     
