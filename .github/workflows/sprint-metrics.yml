@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
       - name: Calculate sprint dates
         id: dates
@@ -68,7 +68,7 @@ jobs:
 
       - name: Collect issue metrics
         id: issues
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const sprint = ${{ steps.dates.outputs.sprint_number }};
@@ -131,7 +131,7 @@ jobs:
 
       - name: Collect PR metrics
         id: prs
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const startDate = new Date('${{ steps.dates.outputs.start_date }}');
@@ -228,7 +228,7 @@ jobs:
 
       - name: Generate burndown data
         id: burndown
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const sprint = ${{ steps.dates.outputs.sprint_number }};
@@ -365,7 +365,7 @@ jobs:
           EOF
 
       - name: Post metrics to discussion
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const fs = require('fs');
@@ -481,11 +481,11 @@ jobs:
     needs: collect-metrics
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
       - name: Calculate velocity trend
         id: trend
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             try {
@@ -554,7 +554,7 @@ jobs:
     if: failure()
     steps:
       - name: Create failure notification issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const workflowUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;

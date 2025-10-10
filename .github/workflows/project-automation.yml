@@ -32,7 +32,7 @@ jobs:
     if: github.event_name == 'issues' && github.event.action == 'opened'
     steps:
       - name: Add issue to project
-        uses: actions/add-to-project@v1.0.2
+        uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e # v1.0.2
         with:
           project-url: ${{ env.PROJECT_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -43,7 +43,7 @@ jobs:
     if: github.event_name == 'issues' && github.event.action == 'assigned'
     steps:
       - name: Move issue to In Progress
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const projectId = '${{ env.PROJECT_ID }}';
@@ -151,7 +151,7 @@ jobs:
     steps:
       - name: Get linked issues
         id: linked
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const query = `
@@ -181,7 +181,7 @@ jobs:
 
       - name: Move linked issues to Review
         if: steps.linked.outputs.result != '[]'
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const projectId = '${{ env.PROJECT_ID }}';
@@ -263,7 +263,7 @@ jobs:
       (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged)
     steps:
       - name: Move to Done column
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const projectId = '${{ env.PROJECT_ID }}';
@@ -333,7 +333,7 @@ jobs:
     steps:
       - name: Parse epic from issue body
         id: epic
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const body = context.payload.issue.body || '';
@@ -342,7 +342,7 @@ jobs:
 
       - name: Link to epic
         if: steps.epic.outputs.result != 'null' && steps.epic.outputs.result != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             // Check if comment already exists to avoid duplicates
@@ -379,7 +379,7 @@ jobs:
 
       - name: Update project field
         if: steps.sprint.outputs.sprint_number
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const projectId = '${{ env.PROJECT_ID }}';
@@ -462,7 +462,7 @@ jobs:
 
       - name: Update story points field
         if: steps.points.outputs.points
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const projectId = '${{ env.PROJECT_ID }}';
@@ -528,7 +528,7 @@ jobs:
     if: github.event_name == 'schedule'
     steps:
       - name: Post standup reminder
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const today = new Date().toLocaleDateString('en-US', {
